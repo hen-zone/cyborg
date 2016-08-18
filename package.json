@@ -23,6 +23,6 @@
     "request-promise": "^4.1.1"
   },
   "engines": {
-    "node": "0.12.1"
+    "node": "5.5.0"
   }
 }
