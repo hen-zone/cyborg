@@ -1,6 +1,7 @@
-import createSession from './mfp/createSession';
-import * as api from './mfp/higherLevelApi';
-import {alterDate, zeroPad} from './mfp/util';
+import createSession from "./mfp/createSession";
+import * as api from "./mfp/higherLevelApi";
+import {alterDate} from "./mfp/util";
+
 
 const EXERCISE_TYPES = {
     APPLE_WATCH: {

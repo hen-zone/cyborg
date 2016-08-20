@@ -4,6 +4,7 @@ import * as baseApi from './baseApi';
 var EXERCISE_INSTANCE = /<div class="exercise-description">.+?<\/tr>/gm;
 
 
+
 export function exerciseInstancesFromPage(page) {
     const textInstances = page.replace(/\s+/gm, ' ').match(EXERCISE_INSTANCE);
     if (!textInstances) return [];

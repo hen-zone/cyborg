@@ -2,6 +2,7 @@ import express from 'express';
 import bodyParser from 'body-parser';
 
 import {setBonusesForDays, applyRolloverForDate, setSmoothedWeightForDate} from './cyborgApi'
+import {incrementBeeminderGoal} from './beeminderApi';
 import {validateDate, zeroPad} from './mfp/util';
 
 
@@ -55,8 +56,21 @@ async function handleSetWeightForDate(weight, date) {
         throw new Error(`weight was not a number: ${weight}`);
     }
 
+    await incrementBeeminderGoal('weigh');
+
     return (await setSmoothedWeightForDate(date, weightNum));
 }
+
+expressApp.get('/brush-teeth', async (req, res) => {
+    try {
+        await incrementBeeminderGoal('brush-teeth');
+        res.json({"success": "👍🏻"});
+    } catch (reason) {
+        res.json({error: String(reason)});
+        console.error(reason.stack);
+    }
+    res.end();
+});
 
 expressApp.get('/set-weight-for-date', async (req, res) => {
     try {
@@ -86,6 +100,7 @@ expressApp.get('/apply-rollover', async (req, res) => {
         const {date} = req.query;
         validateDate(date);
         await applyRolloverForDate(date);
+        await incrementBeeminderGoal('food-diary');
         res.json({success: `Applied rollover for ${date}`})
     } catch (reason) {
         res.json({error: String(reason)});
