@@ -60,7 +60,7 @@ function parseMappings(mappings) {
 }
 
 expressApp.post('/parse-tweet', async (req, res) => {
-    const tweet = req.body;
+    const {tweet} = req.body;
     console.log(`received this body on the parse-tweet endpoint: ${JSON.stringify(tweet)}`);
     res.json({success: "Nice! Thanks for this tasty tweet to parse!"});
     res.end();
