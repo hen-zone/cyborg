@@ -58,6 +58,17 @@ expressApp.get('/brush-teeth', async (req, res) => {
     res.end();
 });
 
+expressApp.get('/daily-routine', async (req, res) => {
+    try {
+        await incrementBeeminderGoal('daily-routine');
+        res.json({"success": "👍🏻"});
+    } catch (reason) {
+        res.json({error: String(reason)});
+        console.error(reason.stack);
+    }
+    res.end();
+});
+
 expressApp.get('/set-weight-for-date', async (req, res) => {
     try {
         const {weight, date} = req.query;
