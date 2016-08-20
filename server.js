@@ -37,10 +37,19 @@ expressApp.get('/favicon', async(req, res) => {
     res.json("Nothing here lol");
 });
 
+function normalizeDate(date) {
+    try {
+        return new Date(date.split(' at ')[0]).toISOString().split('T')[0];
+    }
+    catch(reason) {
+        return '';
+    }
+}
+
 async function handleSetWeightForDate(weight, date) {
     const weightNum = Number(weight);
-    const normalizedDate = new Date(date.split(' at ')).toISOString().split('T')[0];
-    validateDate(date);
+    const normalizedDate = normalizeDate(date);
+    validateDate(normalizedDate);
 
     if (weightNum !== weightNum) {
         throw new Error(`weight was not a number: ${weight}`);
@@ -48,7 +57,7 @@ async function handleSetWeightForDate(weight, date) {
 
     await setWeightForDate(date, weightNum);
 
-    return `Set weight ${weight} for date ${date}`;
+    return `Set weight ${weightNum} for date ${normalizedDate}`;
 }
 
 expressApp.get('/set-weight-for-date', async (req, res) => {
@@ -57,6 +66,7 @@ expressApp.get('/set-weight-for-date', async (req, res) => {
         res.json({success: await handleSetWeightForDate(weight, date)});
     } catch (reason) {
         res.json({error: String(reason)});
+        console.error(reason.stack);
     }
     res.end();
 });
