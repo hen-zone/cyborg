@@ -67,7 +67,7 @@ expressApp.get('/accept-bonuses-from-workflow', async (req, res) => {
         }
         const parsedMappings = parseMappings(mappings);
         await setBonusesForDays(parsedMappings);
-        res.json('Set bonuses successfully!')
+        res.json({success:'Set bonuses successfully!'})
     } catch(reason) {
         console.error(reason.stack);
         res.json({error: String(reason)});
