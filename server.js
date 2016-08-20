@@ -74,7 +74,7 @@ expressApp.post('/parse-tweet', async (req, res) => {
     } else {
         const diaryNoticeParts = tweet.match(/completed his food and exercise diary for (\S+)/);
         if (diaryNoticeParts) {
-            const [month, day, year] = diaryNoticeParts[1];
+            const [month, day, year] = diaryNoticeParts[1].split('/');
             const zeroPad = it => it.length === 1 ? `0${it}` : it;
             const normalizedDate = `${year}-${zeroPad(month)}-${zeroPad(day)}`;
             console.log(`This looks like a diary completion for ${normalizedDate}`);
