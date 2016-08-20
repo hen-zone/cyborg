@@ -52,3 +52,4 @@ export async function remainingCaloriesForDay(session, date) {
 
     return + matches[2];
 }
+

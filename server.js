@@ -1,7 +1,7 @@
 import express from 'express';
 import bodyParser from 'body-parser';
 
-import {setBonusesForDays, applyRolloverForDate} from './bonuses'
+import {setBonusesForDays, applyRolloverForDate, setWeightForDate} from './bonuses'
 import {validateDate} from './mfp/util';
 
 
@@ -9,6 +9,19 @@ import {validateDate} from './mfp/util';
 //noinspection JSUnresolvedVariable
 const port = process.env.PORT || 3000;
 
+/*
+ *
+ *
+ *
+ *
+ * TODO: Add beeminder callbacks also! For weight/diary.
+ *
+ *
+ *
+ *
+ *
+ *
+ */
 
 const expressApp = express();
 
@@ -24,28 +37,27 @@ expressApp.get('/favicon', async(req, res) => {
     res.json("Nothing here lol");
 });
 
-expressApp.post('/add-weight', async(req, res) => {
-    try {
-        const {body} = req;
-        const {weight, username, password} = body;
+async function handleSetWeightForDate(weight, date) {
+    const weightNum = Number(weight);
+    const normalizedDate = new Date(date.split(' at ')).toISOString().split('T')[0];
+    validateDate(date);
 
-        if (!username || !password || !weight) {
-            throw new Error("username, password and weight must all be specified in your post body.");
-        }
-
-        if (weight !== String(Number(weight))) {
-            throw new Error(`The weight parameter (${weight}) was not a number.`);
-        }
-
-        // const result = await addSmoothedWeight(username, password, Number(weight));
-        // console.log(result);
-        // res.json(result);
-    } catch (error) {
-        const reason = error && error.stack || error;
-        console.error("failed:", reason);
-        res.json({error: 'Sorry, the weight thing failed! check logs.'});
+    if (weightNum !== weightNum) {
+        throw new Error(`weight was not a number: ${weight}`);
     }
 
+    await setWeightForDate(date, weightNum);
+
+    return `Set weight ${weight} for date ${date}`;
+}
+
+expressApp.get('/set-weight-for-date', async (req, res) => {
+    try {
+        const {weight, date} = req.query;
+        res.json({success: await handleSetWeightForDate(weight, date)});
+    } catch (reason) {
+        res.json({error: String(reason)});
+    }
     res.end();
 });
 
@@ -70,6 +82,7 @@ expressApp.get('/apply-rollover', async (req, res) => {
     } catch (reason) {
         res.json({error: String(reason)});
     }
+    res.end();
 });
 
 expressApp.post('/parse-tweet', async (req, res) => {

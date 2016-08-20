@@ -59,3 +59,7 @@ export async function applyRolloverForDate(date) {
     const nextDay = alterDate(date, 1);
     await setExerciseOfTypeForDate(session, EXERCISE_TYPES.ROLLOVER, nextDay, rollover);
 }
+
+export async function setWeightForDate(date, weight) {
+    console.log(`We should be setting the weight for ${date} to ${weight} right now!`)
+}
