@@ -1,6 +1,7 @@
 import createSession from "./mfp/createSession";
 import * as api from "./mfp/higherLevelApi";
 import {alterDate} from "./mfp/util";
+import * as ifttt from './iftttNotificationsApi';
 
 
 const EXERCISE_TYPES = {
@@ -34,7 +35,7 @@ async function setExerciseOfTypeForDate(session, type, date, calories) {
 
     let exerciseInstance = (await getCurrentExcercise()) || (await createExercise());
 
-    if (! exerciseInstance) {
+    if (!exerciseInstance) {
         throw new Error(`Could not get existing exercise of type ${type.name} for date ${date},`
             + ` and cloning from the template date failed.`);
     }
@@ -48,7 +49,7 @@ async function makeButtfractalSession() {
 
 export async function setBonusesForDays(dayBonusPairs) {
     const session = await makeButtfractalSession();
-    await parallelForEach(dayBonusPairs, async ([date, bonus]) => {
+    await parallelForEach(dayBonusPairs, async([date, bonus]) => {
         await setExerciseOfTypeForDate(session, EXERCISE_TYPES.APPLE_WATCH, date, bonus)
     });
 }
@@ -84,8 +85,20 @@ export async function setSmoothedWeightForDate(date, weight) {
     const recentWeights = await api.recentWeights(session);
     // find the most recent weight that is not this exact date;
     const mostRecentPreviousEntry = recentWeights.filter(it => it.date !== date)[0];
-    const mostRecentWeight = mostRecentPreviousEntry ? mostRecentPreviousEntry.weight: weight;
+    const mostRecentWeight = mostRecentPreviousEntry ? mostRecentPreviousEntry.weight : weight;
     const smoothedWeight = smoothWeight(mostRecentWeight, weight);
     await api.setWeightForDate(session, date, smoothedWeight);
+
+    await sendMessagesForWeightChange(mostRecentWeight, smoothedWeight);
     return smoothedWeight;
+}
+
+import WEIGHT_MESSAGES from './weightMessages';
+
+export async function sendMessagesForWeightChange(oldWeight, newWeight) {
+    const matchingMessages = WEIGHT_MESSAGES.filter(it => it[0] < oldWeight && it[0] >= newWeight);
+    const fullNotification = matchingMessages.map(it => it[1]).join('\n');
+    if (fullNotification) {
+        return await ifttt.sendNotification(fullNotification);
+    }
 }

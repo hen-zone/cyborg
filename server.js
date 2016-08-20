@@ -1,28 +1,12 @@
-import express from 'express';
-import bodyParser from 'body-parser';
-
-import {setBonusesForDays, applyRolloverForDate, setSmoothedWeightForDate} from './cyborgApi'
-import {incrementBeeminderGoal} from './beeminderApi';
-import {validateDate, zeroPad} from './mfp/util';
-
+import express from "express";
+import bodyParser from "body-parser";
+import {setBonusesForDays, applyRolloverForDate, setSmoothedWeightForDate, sendMessagesForWeightChange} from "./cyborgApi";
+import {incrementBeeminderGoal} from "./beeminderApi";
+import {validateDate, zeroPad} from "./mfp/util";
 
 
 //noinspection JSUnresolvedVariable
 const port = process.env.PORT || 3000;
-
-/*
- *
- *
- *
- *
- * TODO: Add beeminder callbacks also! For weight/diary.
- *
- *
- *
- *
- *
- *
- */
 
 const expressApp = express();
 
@@ -56,9 +40,11 @@ async function handleSetWeightForDate(weight, date) {
         throw new Error(`weight was not a number: ${weight}`);
     }
 
+    const smoothedWeight = (await setSmoothedWeightForDate(date, weightNum));
+
     await incrementBeeminderGoal('weigh');
 
-    return (await setSmoothedWeightForDate(date, weightNum));
+    return smoothedWeight;
 }
 
 expressApp.get('/brush-teeth', async (req, res) => {
