@@ -1,5 +1,6 @@
 import createSession from './mfp/createSession';
 import * as api from './mfp/higherLevelApi';
+import {alterDate} from './mfp/util';
 
 const EXERCISE_TYPES = {
     APPLE_WATCH: {
@@ -53,7 +54,8 @@ export async function setBonusesForDays(dayBonusPairs) {
 
 export async function applyRolloverForDate(date) {
     const session = await makeButtfractalSession();
-    console.log(`We should be applying a rollover for ${date} right now`);
+    const remaining = await api.remainingCaloriesForDay(session, date);
+    let rollover = remaining < 0 ? 0 : (10 * ((remaining / 10) | 0));
+    const nextDay = alterDate(date, 1);
+    await setExerciseOfTypeForDate(session, EXERCISE_TYPES.ROLLOVER, nextDay, rollover);
 }
-
-export async function handleDiaryCompletion(){}

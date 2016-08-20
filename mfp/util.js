@@ -14,3 +14,9 @@ export function validateDate(date) {
         throw new Error(`Invalid date: ${date}. Dates need to be YYYY-MM-DD.`);
     }
 }
+
+export function alterDate(date, days) {
+    var advanced = new Date(date);
+    advanced.setDate(advanced.getDate() + days);
+    return advanced.toISOString().split('T')[0];
+}

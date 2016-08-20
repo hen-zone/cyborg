@@ -37,3 +37,18 @@ export async function cloneExercise(session, fromDate, toDate) {
 
     return await baseApi.get(session, cloneUrl);
 }
+
+export async function foodPageForDay(session, date) {
+    validateDate(date);
+    return baseApi.get(session, `food/diary?date=${date}`);
+}
+
+export async function remainingCaloriesForDay(session, date) {
+    const foodPage = await foodPageForDay(session, date);
+    const matches = foodPage.replace(/\s+/g, ' ').match(/Remaining<\/td> <td class="(positive|negative)">([^<]+)<\/td>/);
+    if (! matches) {
+        throw new Error(`Food page for ${date} did not contain a remaining calorie amount.`);
+    }
+
+    return + matches[2];
+}

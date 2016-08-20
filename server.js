@@ -73,10 +73,7 @@ expressApp.get('/apply-rollover', async (req, res) => {
 });
 
 expressApp.post('/parse-tweet', async (req, res) => {
-    var body = req.body;
-    console.log(`Invoked parse-tweet with raw body:`, body);
-    const tweet = body;
-    console.log(`received this body on the parse-tweet endpoint: ${JSON.stringify(tweet)}`);
+    const tweet = req.body;
     res.json({success: "Nice! Thanks for this tasty tweet to parse!"});
     res.end();
 
@@ -89,7 +86,6 @@ expressApp.post('/parse-tweet', async (req, res) => {
             const [month, day, year] = diaryNoticeParts[1].split('/');
             const zeroPad = it => it.length === 1 ? `0${it}` : it;
             const normalizedDate = `${year}-${zeroPad(month)}-${zeroPad(day)}`;
-            console.log(`This looks like a diary completion for ${normalizedDate}`);
             await applyRolloverForDate(normalizedDate);
         }
     }
