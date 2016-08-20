@@ -1,6 +1,10 @@
 import express from 'express';
 import bodyParser from 'body-parser';
 
+import {setBonusesForDays} from './bonuses'
+
+
+
 //noinspection JSUnresolvedVariable
 const port = process.env.PORT || 3000;
 
@@ -11,8 +15,13 @@ expressApp.use(bodyParser.json());
 expressApp.use(bodyParser.urlencoded({extended: true}));
 
 expressApp.get('/', async(req, res) => {
-    res.json("FANTASTIC!");
+    res.json(`Try GETting with the form /accept-bonuses-from-workflow?mappings=[["2016-08-20", 270]]`);
 });
+
+expressApp.get('/favicon', async(req, res) => {
+    res.json("Nothing here lol");
+});
+
 expressApp.post('/add-weight', async(req, res) => {
     try {
         const {body} = req;
@@ -33,6 +42,35 @@ expressApp.post('/add-weight', async(req, res) => {
         const reason = error && error.stack || error;
         console.error("failed:", reason);
         res.json({error: 'Sorry, the weight thing failed! check logs.'});
+    }
+
+    res.end();
+});
+
+function parseMappings(mappings) {
+    try {
+        const result = JSON.parse(decodeURIComponent(mappings));
+        if (! result || typeof result.length !== 'number') {
+            throw new Error();
+        }
+        return result;
+    } catch (reason) {
+        throw new Error('Mappings were not a valid JSON array.')
+    }
+}
+expressApp.get('/accept-bonuses-from-workflow', async (req, res) => {
+    try {
+        const {mappings} = req.query;
+
+        if (! mappings) {
+            throw new Error('No mappings parameter was provided.');
+        }
+        const parsedMappings = parseMappings(mappings);
+        await setBonusesForDays(parsedMappings);
+        res.json('Set bonuses successfully!')
+    } catch(reason) {
+        console.error(reason.stack);
+        res.json({error: String(reason)});
     }
 
     res.end();
