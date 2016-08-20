@@ -60,13 +60,15 @@ function parseMappings(mappings) {
 }
 
 expressApp.post('/parse-tweet', async (req, res) => {
-    const {tweet} = req.body;
+    var body = req.body;
+    console.log(`Invoked parse-tweet with raw body:`, body);
+    const tweet = body;
     console.log(`received this body on the parse-tweet endpoint: ${JSON.stringify(tweet)}`);
     res.json({success: "Nice! Thanks for this tasty tweet to parse!"});
     res.end();
 
     if (! /#myfitnesspal/.test(tweet)) {
-        console.log('not an MFP tweet; dropping.')
+        console.log('not an MFP tweet; dropping.');
         return;
     } else {
         const diaryNoticeParts = tweet.match(/completed his food and exercise diary for (\S+)/);
