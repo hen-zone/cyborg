@@ -58,6 +58,14 @@ function parseMappings(mappings) {
         throw new Error('Mappings were not a valid JSON array.')
     }
 }
+
+expressApp.post('/parse-tweet', async (req, res) => {
+    const tweet = req.body;
+    console.log(`received this body on the parse-tweet endpoint: ${JSON.stringify(tweet)}`);
+    res.json({success: "Nice! Thanks for this tasty tweet to parse!"});
+    res.end();
+});
+
 expressApp.get('/accept-bonuses-from-workflow', async (req, res) => {
     try {
         const {mappings} = req.query;

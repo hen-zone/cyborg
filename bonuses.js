@@ -40,10 +40,15 @@ async function setExerciseOfTypeForDate(session, type, date, calories) {
     await api.modifyExercise(session, exerciseInstance.id, calories);
 }
 
+async function makeButtfractalSession() {
+    return await createSession('buttfractal', 'my8192fitnesspal');
+}
+
 export async function setBonusesForDays(dayBonusPairs) {
-    const session = await createSession('buttfractal', 'my8192fitnesspal');
+    const session = await makeButtfractalSession();
     await parallelForEach(dayBonusPairs, async ([date, bonus]) => {
         await setExerciseOfTypeForDate(session, EXERCISE_TYPES.APPLE_WATCH, date, bonus)
     });
 }
 
+export async function handleDiaryCompletion(){}
