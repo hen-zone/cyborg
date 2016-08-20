@@ -64,6 +64,16 @@ expressApp.post('/parse-tweet', async (req, res) => {
     console.log(`received this body on the parse-tweet endpoint: ${JSON.stringify(tweet)}`);
     res.json({success: "Nice! Thanks for this tasty tweet to parse!"});
     res.end();
+
+    if (! /#myfitnesspal/.test(tweet)) {
+        console.log('not an MFP tweet; dropping.')
+        return;
+    } else {
+        const diaryNoticeParts = tweet.match(/completed his food and exercise diary for (\S+)/);
+        if (diaryNoticeParts) {
+            console.log(`This looks like a diary completion for ${diaryNoticeParts[1]}`);
+        }
+    }
 });
 
 expressApp.get('/accept-bonuses-from-workflow', async (req, res) => {
