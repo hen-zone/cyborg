@@ -1,14 +1,8 @@
-import {textBetween} from './util';
+import {textBetween, validateDate} from './util';
 import * as baseApi from './baseApi';
 
-var DATE_SHAPE = /\d\d\d\d-\d\d-\d\d/;
 var EXERCISE_INSTANCE = /<div class="exercise-description">.+?<\/tr>/gm;
 
-function validateDate(date) {
-    if (! DATE_SHAPE.test(date)) {
-        throw new Error(`Invalid date: ${date}. Dates need to be YYYY-MM-DD.`);
-    }
-}
 
 export function exerciseInstancesFromPage(page) {
     const textInstances = page.replace(/\s+/gm, ' ').match(EXERCISE_INSTANCE);

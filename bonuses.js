@@ -51,4 +51,9 @@ export async function setBonusesForDays(dayBonusPairs) {
     });
 }
 
+export async function applyRolloverForDate(date) {
+    const session = await makeButtfractalSession();
+    console.log(`We should be applying a rollover for ${date} right now`);
+}
+
 export async function handleDiaryCompletion(){}

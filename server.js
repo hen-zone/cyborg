@@ -1,7 +1,8 @@
 import express from 'express';
 import bodyParser from 'body-parser';
 
-import {setBonusesForDays} from './bonuses'
+import {setBonusesForDays, applyRolloverForDate} from './bonuses'
+import {validateDate} from './mfp/util';
 
 
 
@@ -60,6 +61,17 @@ function parseMappings(mappings) {
     }
 }
 
+expressApp.get('/apply-rollover', async (req, res) => {
+    try {
+        const {date} = req.query;
+        validateDate(date);
+        await applyRolloverForDate(date);
+        res.json({success: `Applied rollover for ${date}`})
+    } catch (reason) {
+        res.json({error: String(reason)});
+    }
+});
+
 expressApp.post('/parse-tweet', async (req, res) => {
     var body = req.body;
     console.log(`Invoked parse-tweet with raw body:`, body);
@@ -78,6 +90,7 @@ expressApp.post('/parse-tweet', async (req, res) => {
             const zeroPad = it => it.length === 1 ? `0${it}` : it;
             const normalizedDate = `${year}-${zeroPad(month)}-${zeroPad(day)}`;
             console.log(`This looks like a diary completion for ${normalizedDate}`);
+            await applyRolloverForDate(normalizedDate);
         }
     }
 });
