@@ -12,6 +12,7 @@ const port = process.env.PORT || 3000;
 const expressApp = express();
 
 expressApp.use(bodyParser.json());
+expressApp.use(bodyParser.text());
 expressApp.use(bodyParser.urlencoded({extended: true}));
 
 expressApp.get('/', async(req, res) => {
