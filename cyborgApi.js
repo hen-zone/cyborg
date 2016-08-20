@@ -1,6 +1,6 @@
 import createSession from './mfp/createSession';
 import * as api from './mfp/higherLevelApi';
-import {alterDate} from './mfp/util';
+import {alterDate, zeroPad} from './mfp/util';
 
 const EXERCISE_TYPES = {
     APPLE_WATCH: {
@@ -60,6 +60,31 @@ export async function applyRolloverForDate(date) {
     await setExerciseOfTypeForDate(session, EXERCISE_TYPES.ROLLOVER, nextDay, rollover);
 }
 
-export async function setWeightForDate(date, weight) {
-    console.log(`We should be setting the weight for ${date} to ${weight} right now!`)
+const SMOOTHING_CONSTANT = 0.9;
+
+const EPSILON = 0.1;
+
+function smoothWeight(previousWeight, newWeight) {
+    const rawDiff = newWeight - previousWeight;
+
+    const smoothedDiff = (1 - SMOOTHING_CONSTANT) * rawDiff;
+
+    const needsBiasing = (Math.abs(rawDiff) >= EPSILON) && (Math.abs(smoothedDiff) < EPSILON);
+
+    const correctedDiff = needsBiasing ?
+    EPSILON * Math.sign(rawDiff)
+        : smoothedDiff;
+
+    return Math.round((previousWeight + correctedDiff) / EPSILON) * EPSILON;
+}
+
+export async function setSmoothedWeightForDate(date, weight) {
+    const session = await makeButtfractalSession();
+    const recentWeights = await api.recentWeights(session);
+    // find the most recent weight that is not this exact date;
+    const mostRecentPreviousEntry = recentWeights.filter(it => it.date !== date)[0];
+    const mostRecentWeight = mostRecentPreviousEntry ? mostRecentPreviousEntry.weight: weight;
+    const smoothedWeight = smoothWeight(mostRecentWeight, weight);
+    await api.setWeightForDate(session, date, smoothedWeight);
+    return smoothedWeight;
 }

@@ -1,4 +1,4 @@
-import {textBetween, validateDate} from './util';
+import {textBetween, validateDate, zeroPad} from './util';
 import * as baseApi from './baseApi';
 
 var EXERCISE_INSTANCE = /<div class="exercise-description">.+?<\/tr>/gm;
@@ -6,11 +6,11 @@ var EXERCISE_INSTANCE = /<div class="exercise-description">.+?<\/tr>/gm;
 
 export function exerciseInstancesFromPage(page) {
     const textInstances = page.replace(/\s+/gm, ' ').match(EXERCISE_INSTANCE);
-    if (! textInstances) return [];
+    if (!textInstances) return [];
     return textInstances.map(instance => {
-        const id = + textBetween('showEditExercise(', ',', instance);
+        const id = +textBetween('showEditExercise(', ',', instance);
         const name = textBetween(/href="#">\s*/, /\s*<\/a>/, instance);
-        const calories = + textBetween(/<\/div>\s*<\/td>\s*<td>\s*\d+\s*<\/td>\s*<td>\s*/, /\s*<\/td>/, instance);
+        const calories = +textBetween(/<\/div>\s*<\/td>\s*<td>\s*\d+\s*<\/td>\s*<td>\s*/, /\s*<\/td>/, instance);
         return {id, name, calories}
     });
 }
@@ -43,13 +43,35 @@ export async function foodPageForDay(session, date) {
     return baseApi.get(session, `food/diary?date=${date}`);
 }
 
+
 export async function remainingCaloriesForDay(session, date) {
     const foodPage = await foodPageForDay(session, date);
     const matches = foodPage.replace(/\s+/g, ' ').match(/Remaining<\/td> <td class="(positive|negative)">([^<]+)<\/td>/);
-    if (! matches) {
+    if (!matches) {
         throw new Error(`Food page for ${date} did not contain a remaining calorie amount.`);
     }
 
-    return + matches[2];
+    return +matches[2];
+}
+
+const WHOLE_WEIGHT_ROW = /<td class="first"> Weight .+?<\/tr>/g;
+const WEIGHT_ROW_PARTS = /<td class="first"> Weight <\/td> <td class="col-num">(\S+)\/(\S+)\/(\S+)<\/td> <td class="col-num">(\S+) kg<\/td>/;
+
+export async function recentWeights(session) {
+    const page = await baseApi.get(session, 'measurements/edit');
+    const normalizedPage = page.replace(/\s+/g, ' ');
+    const weightRows = normalizedPage.match(WHOLE_WEIGHT_ROW, 'g');
+    return weightRows && weightRows.map(row => {
+            const parts = row.match(WEIGHT_ROW_PARTS);
+            const weight = + parts[4];
+            const date = `${parts[3]}-${zeroPad(parts[1])}-${parts[2]}`;
+            return {date, weight};
+        });
+}
+
+export async function setWeightForDate(session, date, weight) {
+    return await baseApi.post(session, 'measurements/save', {
+        'weight[display_value]': weight
+    });
 }
 

@@ -20,3 +20,5 @@ export function alterDate(date, days) {
     advanced.setDate(advanced.getDate() + days);
     return advanced.toISOString().split('T')[0];
 }
+
+export const zeroPad = it => it.length === 1 ? `0${it}` : it;

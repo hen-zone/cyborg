@@ -1,8 +1,8 @@
 import express from 'express';
 import bodyParser from 'body-parser';
 
-import {setBonusesForDays, applyRolloverForDate, setWeightForDate} from './bonuses'
-import {validateDate} from './mfp/util';
+import {setBonusesForDays, applyRolloverForDate, setSmoothedWeightForDate} from './cyborgApi'
+import {validateDate, zeroPad} from './mfp/util';
 
 
 
@@ -55,9 +55,9 @@ async function handleSetWeightForDate(weight, date) {
         throw new Error(`weight was not a number: ${weight}`);
     }
 
-    await setWeightForDate(date, weightNum);
+    const smoothedWeight = await setSmoothedWeightForDate(date, weightNum);
 
-    return `Set weight ${weightNum} for date ${normalizedDate}`;
+    return `Set weight ${smoothedWeight} for date ${normalizedDate}`;
 }
 
 expressApp.get('/set-weight-for-date', async (req, res) => {
@@ -107,7 +107,6 @@ expressApp.post('/parse-tweet', async (req, res) => {
         const diaryNoticeParts = tweet.match(/completed his food and exercise diary for (\S+)/);
         if (diaryNoticeParts) {
             const [month, day, year] = diaryNoticeParts[1].split('/');
-            const zeroPad = it => it.length === 1 ? `0${it}` : it;
             const normalizedDate = `${year}-${zeroPad(month)}-${zeroPad(day)}`;
             await applyRolloverForDate(normalizedDate);
         }
