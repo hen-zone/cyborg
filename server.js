@@ -55,9 +55,7 @@ async function handleSetWeightForDate(weight, date) {
         throw new Error(`weight was not a number: ${weight}`);
     }
 
-    const smoothedWeight = await setSmoothedWeightForDate(date, weightNum);
-
-    return `Set weight ${smoothedWeight} for date ${normalizedDate}`;
+    return (await setSmoothedWeightForDate(date, weightNum));
 }
 
 expressApp.get('/set-weight-for-date', async (req, res) => {
