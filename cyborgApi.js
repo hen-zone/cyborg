@@ -2,6 +2,7 @@ import createSession from "./mfp/createSession";
 import * as api from "./mfp/higherLevelApi";
 import {alterDate} from "./mfp/util";
 import * as ifttt from './iftttNotificationsApi';
+import {incrementBeeminderGoal} from './beeminderApi';
 
 
 const EXERCISE_TYPES = {
@@ -60,6 +61,7 @@ export async function applyRolloverForDate(date) {
     let rollover = remaining < 0 ? 0 : (10 * ((remaining / 10) | 0));
     const nextDay = alterDate(date, 1);
     await setExerciseOfTypeForDate(session, EXERCISE_TYPES.ROLLOVER, nextDay, rollover);
+    await incrementBeeminderGoal('food-diary');
 }
 
 const SMOOTHING_CONSTANT = 0.9;

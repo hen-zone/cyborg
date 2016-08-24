@@ -97,7 +97,6 @@ expressApp.get('/apply-rollover', async (req, res) => {
         const {date} = req.query;
         validateDate(date);
         await applyRolloverForDate(date);
-        await incrementBeeminderGoal('food-diary');
         res.json({success: `Applied rollover for ${date}`})
     } catch (reason) {
         res.json({error: String(reason)});
