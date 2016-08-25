@@ -16,14 +16,36 @@ export function exerciseInstancesFromPage(page) {
     });
 }
 
-export function exerciseForNameFromPage(page, name) {
-    return exerciseInstancesFromPage(page).filter(it => it.name === name)[0];
+export function firstExerciseForNameFromPage(page, name) {
+    return exercisesForNameFromPage(page, name)[0];
 }
 
+export function exercisesForNameFromPage(page, name) {
+    return exerciseInstancesFromPage(page).filter(it => it.name === name);
+}
 
-export async function modifyExercise(session, exerciseId, calories) {
+export async function modifyExerciseInstance(session, exerciseId, calories) {
     return await baseApi.post(session, `exercise/edit_entry/${exerciseId}`,
         {'exercise_entry[calories]': calories});
+}
+
+export async function createExerciseById(session, date, typeId, calories) {
+    const [year, month, day] = date.split('-');
+    return await baseApi.post(session, 'exercise/add_favorites', {
+        "date": date,
+        "favorites[0][exercise_id]": typeId,
+        "favorites[0][start_time(1i)]": + year,
+        "favorites[0][start_time(2i)]": + month,
+        "favorites[0][start_time(3i)]": + day,
+        "favorites[0][calories]": calories,
+        "favorites[0][exercise_type]": "0",
+        "favorites[0][checked]": "1",
+        "favorites[0][quantity]": "15"
+    });
+}
+
+export async function deleteExerciseByIdAndDate(session, id, date) {
+    return await baseApi.get(session, `exercise/remove/${id}?date=${date}`);
 }
 
 export async function exercisePageForDay(session, date) {

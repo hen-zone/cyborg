@@ -8,13 +8,16 @@ import {incrementBeeminderGoal} from './beeminderApi';
 const EXERCISE_TYPES = {
     APPLE_WATCH: {
         name: 'Apple Watch Activity',
-        templateDate: '2016-08-15'
+        templateDate: '2016-08-15',
+        id: 65259518
     },
     ROLLOVER: {
         name: 'Rollover',
-        templateDate: '2016-06-01'
+        templateDate: '2016-06-01',
+        id: 65848663
     }
 };
+
 
 async function parallelForEach(list, proc) {
     const promises = list.map(proc);
@@ -24,24 +27,22 @@ async function parallelForEach(list, proc) {
 }
 
 async function setExerciseOfTypeForDate(session, type, date, calories) {
-    async function getCurrentExcercise() {
-        let page = await api.exercisePageForDay(session, date);
-        return api.exerciseForNameFromPage(page, type.name);
+    const page = await api.exercisePageForDay(session, date);
+    const existingInstances = await api.exercisesForNameFromPage(page, type.name);
+    const totalExisting = existingInstances.reduce((cum, instance)=> cum + instance.calories, 0);
+
+    console.log(`day ${date} has ${totalExisting}cal of ${type.name}`);
+
+    if (totalExisting < calories) {
+        api.createExerciseById(session, date, type.id, calories - totalExisting);
+    } else if (totalExisting > calories) {
+        await Promise.all(existingInstances.map(
+            async instance => await api.deleteExerciseByIdAndDate(session, instance.id, date)
+        ));
+        await api.createExerciseById(session, date, type.id, calories);
+    } else {
+        console.log("Nothing to do — amount is aready correct");
     }
-
-    async function createExercise() {
-        await api.cloneExercise(session, type.templateDate, date);
-        return await getCurrentExcercise();
-    }
-
-    let exerciseInstance = (await getCurrentExcercise()) || (await createExercise());
-
-    if (!exerciseInstance) {
-        throw new Error(`Could not get existing exercise of type ${type.name} for date ${date},`
-            + ` and cloning from the template date failed.`);
-    }
-
-    await api.modifyExercise(session, exerciseInstance.id, calories);
 }
 
 async function makeButtfractalSession() {
