@@ -101,9 +101,9 @@ import WEIGHT_MESSAGES from './weightMessages';
 export async function sendMessagesForWeightChange(oldWeight, newWeight) {
     const diff = oldWeight - newWeight;
     const basicResult = diff > 0 ?
-        (`⚖️ Lost ${diff.toFixed(1)}, down to ${newWeight.toFixed(1)}.\n`)
+        (`⚖️ Lost ${diff.toFixed(1)}, down to ${newWeight.toFixed(1)}!\n`)
         : '';
     const matchingMessages = WEIGHT_MESSAGES.filter(it => it[0] < oldWeight && it[0] >= newWeight);
-    const joinedMessages = matchingMessages.map(it => it[1]).join('\n');
-    return await ifttt.sendNotification(basicResult + joinedMessages);
+    const joinedMessages = [basicResult].concat(matchingMessages.map(it => it[1])).join('\n');
+    return await ifttt.sendNotification(joinedMessages);
 }
