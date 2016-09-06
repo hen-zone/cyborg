@@ -44,7 +44,7 @@ async function handleSetWeightForDate(weight, date) {
 
     await incrementBeeminderGoal('weigh');
 
-    return smoothedWeight;
+    return smoothedWeight.toFixed(1);
 }
 
 expressApp.get('/brush-teeth', async (req, res) => {
