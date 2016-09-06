@@ -105,7 +105,5 @@ export async function sendMessagesForWeightChange(oldWeight, newWeight) {
         : '';
     const matchingMessages = WEIGHT_MESSAGES.filter(it => it[0] < oldWeight && it[0] >= newWeight);
     const joinedMessages = matchingMessages.map(it => it[1]).join('\n');
-    if (joinedMessages) {
-        return await ifttt.sendNotification(basicResult + joinedMessages);
-    }
+    return await ifttt.sendNotification(basicResult + joinedMessages);
 }
