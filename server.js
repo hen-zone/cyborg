@@ -42,7 +42,7 @@ async function handleSetWeightForDate(weight, date) {
 
     const smoothedWeight = (await setSmoothedWeightForDate(date, weightNum));
 
-    await incrementBeeminderGoal('weigh');
+    await incrementBeeminderGoal('weigh', true);
 
     return smoothedWeight.toFixed(1);
 }
