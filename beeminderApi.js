@@ -11,7 +11,7 @@ export async function incrementBeeminderGoal(goalId, silent=false) {
     });
 
     if (! silent) {
-        await sendNotification(`🐝 Updated the ${goalId} goal.`);
+        await sendNotification(`🐝 hen updated their ${goalId} goal.`);
     }
 
     return result;

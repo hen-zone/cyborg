@@ -5,6 +5,17 @@ import {incrementBeeminderGoal} from "./beeminderApi";
 import {validateDate, zeroPad} from "./mfp/util";
 
 
+// (async function() {
+//     for (let i = 0; i < 20; ++i) {
+//         await Promise.all([
+//             incrementBeeminderGoal('brush-teeth'),
+//             incrementBeeminderGoal('daily-routine'),
+//             incrementBeeminderGoal('food-diary'),
+//             incrementBeeminderGoal('weigh'),
+//         ]);
+//     }
+// })();
+
 //noinspection JSUnresolvedVariable
 const port = process.env.PORT || 3000;
 
