@@ -46,7 +46,7 @@ async function setExerciseOfTypeForDate(session, type, date, calories) {
 }
 
 async function makeButtfractalSession() {
-    return await createSession('buttfractal', 'my8192fitnesspal');
+    return await createSession('buttfractal', 'pYWFHswkaMwBZm6kpqMo');
 }
 
 export async function setBonusesForDays(dayBonusPairs) {
