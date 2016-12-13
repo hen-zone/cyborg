@@ -141,14 +141,12 @@ expressApp.get('/accept-bonuses-from-workflow', async (req, res) => {
             throw new Error('No mappings parameter was provided.');
         }
         const parsedMappings = parseMappings(mappings);
-        res.json({success:'Setting bonuses asynchronously now!'})
+        res.json({success:'Setting bonuses asynchronously now!'});
+        res.end();
         await setBonusesForDays(parsedMappings);
     } catch(reason) {
         console.error(reason.stack);
-        res.json({error: String(reason)});
     }
-
-    res.end();
 });
 
 expressApp.listen(port, () => {
