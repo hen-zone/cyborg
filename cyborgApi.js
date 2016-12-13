@@ -54,6 +54,18 @@ export async function setBonusesForDays(dayBonusPairs) {
     await parallelForEach(dayBonusPairs, async([date, bonus]) => {
         await setExerciseOfTypeForDate(session, EXERCISE_TYPES.APPLE_WATCH, date, bonus)
     });
+
+    if (dayBonusPairs.length === 2) {
+        let tomorrowBonus = dayBonusPairs[1][1];
+        let todayBonus = dayBonusPairs[0][1];
+        if (tomorrowBonus !== 0) {
+            ifttt.sendNotification(`Tomorrow's bonus is ${tomorrowBonus}.`);
+        } else if (todayBonus !== 0) {
+            ifttt.sendNotification(`Today's bonus is ${todayBonus}.`);
+        } else {
+            ifttt.sendNotification(`No bonus currently! ☺️`);
+        }
+    }
 }
 
 export async function applyRolloverForDate(date) {
