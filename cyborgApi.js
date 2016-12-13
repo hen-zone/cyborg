@@ -55,9 +55,9 @@ export async function setBonusesForDays(dayBonusPairs) {
         await setExerciseOfTypeForDate(session, EXERCISE_TYPES.APPLE_WATCH, date, bonus)
     });
 
-    if (dayBonusPairs.length === 2) {
-        let tomorrowBonus = dayBonusPairs[1][1];
-        let todayBonus = dayBonusPairs[0][1];
+    if (dayBonusPairs.length === 3) {
+        let tomorrowBonus = dayBonusPairs[0][1];
+        let todayBonus = dayBonusPairs[1][1];
         if (tomorrowBonus !== 0) {
             ifttt.sendNotification(`Tomorrow's bonus is ${tomorrowBonus}.`);
         } else if (todayBonus !== 0) {
