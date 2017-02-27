@@ -118,11 +118,17 @@ export async function setSmoothedWeightForDate(date, weight) {
 import WEIGHT_MESSAGES from './weightMessages';
 
 export async function sendMessagesForWeightChange(oldWeight, newWeight) {
+    console.log('START: sendMessagesForWeightChange');
     const diff = oldWeight - newWeight;
     const basicResult = diff > 0 ?
         (`⚖️ Lost ${diff.toFixed(1)}, down to ${newWeight.toFixed(1)}!\n`)
         : '';
+    console.log('Done creating base message.');
     const matchingMessages = WEIGHT_MESSAGES.filter(it => it[0] < oldWeight && it[0] >= newWeight);
     const joinedMessages = [basicResult].concat(matchingMessages.map(it => it[1])).join('\n');
-    return await ifttt.sendNotification(joinedMessages);
+    console.log('Done composing special-case weight messages.');
+    let result = await ifttt.sendNotification(joinedMessages);
+    console.log(`Send IFTTT notification (${joinedMessages}).`);
+    console.log('END: sendMessagesForWeightChange');
+    return result;
 }
