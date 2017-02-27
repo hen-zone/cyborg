@@ -127,7 +127,7 @@ export async function sendMessagesForWeightChange(oldWeight, newWeight) {
         : '';
     console.log('Done creating base message.');
     const matchingMessages = WEIGHT_MESSAGES.filter(it => it[0] < oldWeight && it[0] >= newWeight);
-    const joinedMessages = [basicResult].concat(matchingMessages.map(it => it[1])).join('\n');
+    const joinedMessages = [basicResult].concat(matchingMessages.map(it => '✨' + it[1])).join('\n');
     console.log('Done composing special-case weight messages.');
     let result = await ifttt.sendNotification(joinedMessages);
     console.log(`Send IFTTT notification (${joinedMessages}).`);
