@@ -20,7 +20,8 @@
     "body-parser": "^1.15.2",
     "express": "^4.14.0",
     "request": "^2.74.0",
-    "request-promise": "^4.1.1"
+    "request-promise": "^4.1.1",
+    "spotify-web-api-node": "^2.3.6"
   },
   "engines": {
     "node": "5.5.0"
