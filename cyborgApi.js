@@ -94,8 +94,7 @@ function smoothWeight(previousWeight, newWeight) {
 
     const roundedToEpsilon = Math.round((previousWeight + correctedDiff) / EPSILON) * EPSILON;
     // In pathological cases (eg 111.3), floating-point artefacts appear unless we explicitly cap the digits here.
-    const digitsCapped = Math.floor(roundedToEpsilon * 100) / 100;
-    return roundedToEpsilon;
+    return Math.floor(roundedToEpsilon * 100) / 100;
 }
 
 export async function setSmoothedWeightForDate(date, weight) {
