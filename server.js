@@ -62,18 +62,24 @@ function normalizeDate(date) {
 }
 
 async function handleSetWeightForDate(weight, date) {
+    console.log('START: handleSetWeightForDate');
     const weightNum = Number(weight);
     const normalizedDate = normalizeDate(date);
     validateDate(normalizedDate);
+    console.log('Validated date.');
 
     if (weightNum !== weightNum) {
         throw new Error(`weight was not a number: ${weight}`);
     }
+    console.log('Validated weight.');
 
     const smoothedWeight = (await setSmoothedWeightForDate(date, weightNum));
+    console.log('Done setting weight in MFP.');
 
     await incrementBeeminderGoal('weigh', true);
+    console.log('Done applying beeminder increment.');
 
+    console.log('END: handleSetWeightForDate');
     return smoothedWeight.toFixed(1);
 }
 
@@ -100,6 +106,7 @@ expressApp.get('/daily-routine', async (req, res) => {
 });
 
 expressApp.get('/set-weight-for-date', async (req, res) => {
+    console.log('START: handling set-weight-for-date');
     try {
         const {weight, date} = req.query;
         res.json({success: await handleSetWeightForDate(weight, date)});
@@ -108,6 +115,7 @@ expressApp.get('/set-weight-for-date', async (req, res) => {
         console.error(reason.stack);
     }
     res.end();
+    console.log('END: handling set-weight-for-date');
 });
 
 function parseMappings(mappings) {

@@ -96,15 +96,22 @@ function smoothWeight(previousWeight, newWeight) {
 }
 
 export async function setSmoothedWeightForDate(date, weight) {
+    console.log('START: setSmoothedWeightForDate');
     const session = await makeButtfractalSession();
+    console.log('Done creating MFP session.');
     const recentWeights = await api.recentWeights(session);
+    console.log('Done reading recent weights from MFP.');
     // find the most recent weight that is not this exact date;
     const mostRecentPreviousEntry = recentWeights.filter(it => it.date !== date)[0];
     const mostRecentWeight = mostRecentPreviousEntry ? mostRecentPreviousEntry.weight : weight;
     const smoothedWeight = smoothWeight(mostRecentWeight, weight);
+    console.log(`Calculated smooth weight (${smoothedWeight}).`);
     await api.setWeightForDate(session, date, smoothedWeight);
-
+    console.log('Done setting weight in MFP.');
     await sendMessagesForWeightChange(mostRecentWeight, smoothedWeight);
+    console.log('Done sending weight change messages.');
+
+    console.log('END: setSmoothedWeightForDate');
     return smoothedWeight;
 }
 
