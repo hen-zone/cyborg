@@ -131,11 +131,11 @@ async function getPagedPlaylist(spotifyApi, userId, playlistId, offset=0) {
     );
     let nextOffset = offset + limit;
     const moreNeeded = nextOffset < rawPage.body.total;
-    const ids = rawPage.body.items.map(it => it.track.uri);
+    const ids = rawPage.body.items.map(it => it.track.uri).filter(uri => uri !== 'spotify:track:null');
     if (moreNeeded) {
         return [...ids, ...(await getPagedPlaylist(spotifyApi, userId, playlistId, nextOffset))];
     } else {
-        return ids;
+        return ids.filter();
     }
 }
 
