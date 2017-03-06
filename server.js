@@ -16,6 +16,7 @@ let SPOTIFY_REDIRECT_URI = 'http://localhost:3000/';
 const HEN_SPOTIFY = '1232511708';
 
 
+
 //noinspection JSUnresolvedVariable
 const port = process.env.PORT || 3000;
 
@@ -92,7 +93,7 @@ async function addToSpotifyHistory(ids) {
     const historySet = await getSpotifyHistory();
     ids.forEach(it => historySet.add(it));
     const reEncodedHistory = JSON.stringify(Array.from(historySet));
-    await MemCache.set(reEncodedHistory);
+    return await MemCache.set('spotify-history', reEncodedHistory);
 }
 
 async function saveAccessCode(value) {
@@ -125,17 +126,24 @@ async function getPagedPlaylist(spotifyApi, userId, playlistId, offset=0) {
     const rawPage = await spotifyApi.getPlaylistTracks(
         userId,
         playlistId,
-        { fields: "total,items(track(id))", offset, limit },
+        { fields: "total,items(track(uri))", offset, limit },
     );
     let nextOffset = offset + limit;
     const moreNeeded = nextOffset < rawPage.body.total;
-    const ids = rawPage.body.items.map(it => it.track.id);
+    const ids = rawPage.body.items.map(it => it.track.uri);
     if (moreNeeded) {
-        console.log(`There are ${rawPage.body.total} total tracks, and we have loaded ${nextOffset}. We need to go deeper.`);
         return [...ids, ...(await getPagedPlaylist(spotifyApi, userId, playlistId, nextOffset))];
     } else {
-        console.log('We have loaded enough!');
         return ids;
+    }
+}
+
+async function inBatches(limit, list, asyncProcess) {
+    let remaining = [...list];
+    while (true) {
+        const subset = remaining.slice(0, limit);
+        remaining = remaining.slice(limit);
+        await asyncProcess(subset);
     }
 }
 
@@ -153,12 +161,26 @@ expressApp.get('/spotify/inbox', async (req, res) => {
             (history.has(it) ? oldIds : newIds).push(it);
         });
 
-        await spotifyApi.addTracksToPlaylist(HEN_SPOTIFY, PIPE_DREAM_PLAYLIST, newIds.slice(0, 10).map(it => `spotify:track:${it}`));
+        // work in batches of 70
+
+        await inBatches(70, newIds, async(batch) => {
+            console.log(`about to add ${batch.length} tracks to pipe dream...`);
+            await spotifyApi.addTracksToPlaylist(
+                HEN_SPOTIFY,
+                PIPE_DREAM_PLAYLIST,
+                batch,
+            );
+            console.log(`about to remove ${batch.length} tracks from inbox...`);
+            await spotifyApi.removeTracksFromPlaylist(HEN_SPOTIFY, INBOX_PLAYLIST, batch.map(uri => ({uri})));
+            console.log(`about to add ${batch.length} tracks to history...`);
+            await addToSpotifyHistory(batch);
+        });
+
 
         res.json({
-            success: "Loaded the inbox!",
-            old: oldIds,
-            new: newIds,
+            success: "Processed.",
+            addedToPipeDream: newIds.length,
+            alreadySeen: oldIds.length,
         });
     } catch (reason) {
         res.json({error: reason});
