@@ -125,7 +125,7 @@ const limit = 100;
 async function getPagedPlaylist(spotifyApi, userId, playlistId) {
     const firstPage = await getSinglePlaylistPage(spotifyApi, userId, playlistId, 0);
     const numPages = Math.ceil(firstPage.total / 100);
-    const pagePromises = [Promise.resolve(firstPage.uris)];
+    const pagePromises = [Promise.resolve(firstPage)];
     for (let i = 1; i < numPages; ++i) {
         pagePromises.push(getSinglePlaylistPage(spotifyApi, userId, playlistId, i * 100));
     }
@@ -238,7 +238,7 @@ expressApp.get('/spotify/inbox', async (req, res) => {
             return [spec[0], await getPagedPlaylist(spotifyApi, spec[1], spec[2])];
         }));
 
-        console.log('All playlists read');
+        console.log('All playlists read: ', actualPlaylists);
 
         let allNewTracks = [];
         let totalScanned = 0;
@@ -253,10 +253,8 @@ expressApp.get('/spotify/inbox', async (req, res) => {
 
         console.log(`Scanned ${totalScanned} tracks; found ${allNewTracks.length} new ones.`);
 
-
-
         await inBatches(70, allNewTracks, async(batch) => {
-            console.log(`about to add ${batch.length} tracks to pipe dream...:`);
+            console.log(`about to add ${batch.length} tracks to pipe dream...:`, batch);
             await spotifyApi.addTracksToPlaylist(
                 HEN_SPOTIFY,
                 PIPE_DREAM_PLAYLIST,
@@ -279,7 +277,7 @@ expressApp.get('/spotify/inbox', async (req, res) => {
         });
     } catch (reason) {
         res.json({error: reason});
-        console.error(reason.stack);
+        console.error(reason);
     }
     res.end();
 });
