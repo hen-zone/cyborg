@@ -148,6 +148,17 @@ async function inBatches(limit, list, asyncProcess) {
     }
 }
 
+expressApp.get('/spotify/history', async (req, res) => {
+    try {
+        const history = await getSpotifyHistory();
+        return res.json(Array.from(history));
+    } catch (reason) {
+        res.json({error: reason});
+        console.error(reason.stack);
+    }
+    res.end();
+})
+
 expressApp.get('/spotify/inbox', async (req, res) => {
     try {
         const spotifyApi = await makeSpotifyClient(req);
@@ -166,6 +177,9 @@ expressApp.get('/spotify/inbox', async (req, res) => {
             ['pitchforkUnofficialAlbums', 'kenove', '6QdRN6dPnook9KPezrggaO'],
             ['jjjHitList', 'triple.j.abc', '7vFQNWXoblEJXpbnTuyz76'],
             ['pitchforkUnofficialTracks', 'szymonczarnowski', '2LkZTDKWPelJv7HNY9rQV7'],
+            // ['izaakDiscover', 'spotify', '37i9dQZEVXcDc5DQak61yg'],
+            // ['izaakRadar', 'spotify', '37i9dQZEVXbe7LBY0sEzoU'],
+            // ['djoRadar', 'spotify', '37i9dQZEVXbwEaUu0bjFU6'],
         ];
 
         const actualPlaylists = await Promise.all(playlistSpecs.map(async spec => {
