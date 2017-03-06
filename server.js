@@ -203,7 +203,7 @@ expressApp.get('/spotify/cut-pipe', async (req, res) => {
         await spotifyApi.removeTracksFromPlaylist(HEN_SPOTIFY, PIPE_DREAM_PLAYLIST, randomTracks.map(uri => ({uri})));
 
 
-        return res.json({name: name, id: newPlaylistId, tracks: randomTracks});
+        return res.json({name: name, id: newPlaylistId, uri: playlistInfo.body.uri, tracks: randomTracks});
     } catch (reason) {
         res.json({error: reason});
         console.error(reason.stack);
@@ -262,7 +262,6 @@ expressApp.get('/spotify/inbox', async (req, res) => {
                 PIPE_DREAM_PLAYLIST,
                 batch,
             );
-            await spotifyApi.removeTracksFromPlaylist(HEN_SPOTIFY, INBOX_PLAYLIST, batch.map(uri => ({uri})));
             console.log(`about to add ${batch.length} tracks to history...`);
             await addToSpotifyHistory(batch);
         });
