@@ -96,6 +96,12 @@ async function addToSpotifyHistory(ids) {
     return await MemCache.set('spotify-history', reEncodedHistory);
 }
 
+(async () => {
+    const history = await getSpotifyHistory();
+    Array.from(history).reverse().slice(0, 138).forEach(it => console.log(it))
+
+})();
+
 async function saveAccessCode(value) {
     return await MemCache.set('spotify-access-code', value);
 }
@@ -164,7 +170,7 @@ expressApp.get('/spotify/inbox', async (req, res) => {
         // work in batches of 70
 
         await inBatches(70, newIds, async(batch) => {
-            console.log(`about to add ${batch.length} tracks to pipe dream...`);
+            console.log(`about to add ${batch.length} tracks to pipe dream...:`, batch);
             await spotifyApi.addTracksToPlaylist(
                 HEN_SPOTIFY,
                 PIPE_DREAM_PLAYLIST,
