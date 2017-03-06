@@ -1,12 +1,11 @@
 import MemJS from 'memjs';
 
 //noinspection JSUnresolvedVariable
-let REDIS_URL = process.env.REDIS_URL;
 
 console.log('process.env:', process.env);
 
-const memCacheClient = MemJS.Client.create(REDIS_URL);
-console.log('created memcached client with url: ' + REDIS_URL);
+const memCacheClient = MemJS.Client.create();
+console.log('created memcached client with url: ');
 
 console.log('attempting to write!');
 memCacheClient.set('startupTime', String(Date.now()), (err, result) => {
