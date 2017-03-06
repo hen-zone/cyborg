@@ -238,8 +238,6 @@ expressApp.get('/spotify/inbox', async (req, res) => {
             return [spec[0], await getPagedPlaylist(spotifyApi, spec[1], spec[2])];
         }));
 
-        console.log('All playlists read: ', actualPlaylists);
-
         let allNewTracks = [];
         let totalScanned = 0;
 
