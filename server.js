@@ -176,6 +176,10 @@ expressApp.get('/spotify/inbox', async (req, res) => {
             await addToSpotifyHistory(batch);
         });
 
+        await inBatches(70, oldIds, async them => {
+            await spotifyApi.removeTracksFromPlaylist(HEN_SPOTIFY, INBOX_PLAYLIST, them.map(uri => ({uri})));
+        });
+
 
         res.json({
             success: "Processed.",
