@@ -135,7 +135,7 @@ async function getPagedPlaylist(spotifyApi, userId, playlistId, offset=0) {
     if (moreNeeded) {
         return [...ids, ...(await getPagedPlaylist(spotifyApi, userId, playlistId, nextOffset))];
     } else {
-        return ids.filter();
+        return ids;
     }
 }
 
