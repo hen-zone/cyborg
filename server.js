@@ -96,11 +96,6 @@ async function addToSpotifyHistory(ids) {
     return await MemCache.set('spotify-history', reEncodedHistory);
 }
 
-(async () => {
-    const history = await getSpotifyHistory();
-    Array.from(history).reverse().slice(0, 138).forEach(it => console.log(it))
-
-})();
 
 async function saveAccessCode(value) {
     return await MemCache.set('spotify-access-code', value);
