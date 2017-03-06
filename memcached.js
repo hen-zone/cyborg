@@ -2,6 +2,9 @@ import MemJS from 'memjs';
 
 //noinspection JSUnresolvedVariable
 let REDIS_URL = process.env.REDIS_URL;
+
+console.log('process.env:', process.env);
+
 const memCacheClient = MemJS.Client.create(REDIS_URL);
 console.log('created memcached client with url: ' + REDIS_URL);
 
