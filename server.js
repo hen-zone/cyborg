@@ -122,7 +122,18 @@ const INBOX_PLAYLIST = '7LbKQZYipf8CfqH2eWoz5Q';
 const PIPE_DREAM_PLAYLIST = '08vL7ksqd4ovzUb7AAcJi9';
 const limit = 100;
 
-async function getPagedPlaylist(spotifyApi, userId, playlistId, offset=0) {
+async function getPagedPlaylist(spotifyApi, userId, playlistId) {
+    const firstPage = await getSinglePlaylistPage(spotifyApi, userId, playlistId, 0);
+    const numPages = Math.ceil(firstPage.total / 100);
+    const pagePromises = [Promise.resolve(firstPage.uris)];
+    for (let i = 1; i < numPages; ++i) {
+        pagePromises.push(getSinglePlaylistPage(spotifyApi, userId, playlistId, i * 100));
+    }
+    const resolvedPages = await Promise.all(pagePromises);
+    return [].concat.apply([], resolvedPages.map(it => it.uris));
+}
+
+async function getSinglePlaylistPage(spotifyApi, userId, playlistId, offset=0) {
     console.log(`loading playlist ${userId}/${playlistId} at #${offset}`);
     const rawPage = await spotifyApi.getPlaylistTracks(
         userId,
@@ -130,13 +141,10 @@ async function getPagedPlaylist(spotifyApi, userId, playlistId, offset=0) {
         { fields: "total,items(track(uri))", offset, limit },
     );
     let nextOffset = offset + limit;
-    const moreNeeded = nextOffset < rawPage.body.total;
-    const ids = rawPage.body.items.map(it => it.track.uri).filter(uri => uri !== 'spotify:track:null');
-    if (moreNeeded) {
-        return [...ids, ...(await getPagedPlaylist(spotifyApi, userId, playlistId, nextOffset))];
-    } else {
-        return ids;
-    }
+    let total = rawPage.body.total;
+    const moreNeeded = nextOffset < total;
+    const uris = rawPage.body.items.map(it => it.track.uri).filter(uri => uri !== 'spotify:track:null');
+    return { total, uris }
 }
 
 async function inBatches(limit, list, asyncProcess) {
@@ -157,7 +165,51 @@ expressApp.get('/spotify/history', async (req, res) => {
         console.error(reason.stack);
     }
     res.end();
-})
+});
+
+function getRandom(arr, n) {
+    var result = new Array(n),
+        len = arr.length,
+        taken = new Array(len);
+    if (n > len)
+        throw new RangeError("getRandom: more elements taken than available");
+    while (n--) {
+        var x = Math.floor(Math.random() * len);
+        result[n] = arr[x in taken ? taken[x] : x];
+        taken[x] = --len;
+    }
+    return result;
+}
+
+expressApp.get('/spotify/cut-pipe', async (req, res) => {
+    try {
+        const spotifyApi = await makeSpotifyClient(req);
+        const pipeDream = await getPagedPlaylist(spotifyApi, HEN_SPOTIFY, PIPE_DREAM_PLAYLIST);
+        console.log('loaded pipedream');
+        const randomTracks = pipeDream.length > 30 ? getRandom(pipeDream, 30) : pipeDream;
+
+
+        const lastPipeNumber = Number(await MemCache.get('spotify-pipe-number') || 0);
+        const nextPipeNumber = lastPipeNumber + 1;
+        await MemCache.set('spotify-pipe-number', String(nextPipeNumber));
+
+        let name = `Pyro Pipe #${nextPipeNumber}`;
+        console.log('about to create playlist');
+        const playlistInfo = await spotifyApi.createPlaylist(HEN_SPOTIFY, name);
+        console.log('created playlist');
+        const newPlaylistId = playlistInfo.body.id;
+        console.log(randomTracks);
+        await spotifyApi.addTracksToPlaylist(HEN_SPOTIFY, newPlaylistId, randomTracks);
+        await spotifyApi.removeTracksFromPlaylist(HEN_SPOTIFY, PIPE_DREAM_PLAYLIST, randomTracks.map(uri => ({uri})));
+
+
+        return res.json({name: name, id: newPlaylistId, tracks: randomTracks});
+    } catch (reason) {
+        res.json({error: reason});
+        console.error(reason.stack);
+    }
+    res.end();
+});
 
 expressApp.get('/spotify/inbox', async (req, res) => {
     try {
@@ -199,7 +251,7 @@ expressApp.get('/spotify/inbox', async (req, res) => {
             })
         });
 
-        console.log('Scanned ' + totalScanned + ' tracks; found ' + allNewTracks.length + ' new ones.');
+        console.log(`Scanned ${totalScanned} tracks; found ${allNewTracks.length} new ones.`);
 
 
 
