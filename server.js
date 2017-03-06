@@ -20,7 +20,6 @@ const HEN_SPOTIFY = '1232511708';
 const port = process.env.PORT || 3000;
 
 
-
 const expressApp = express();
 
 expressApp.use(bodyParser.json());
@@ -70,20 +69,31 @@ let SPOTIFY_RECEIVE_CREDS_PATH = '/spotify/receive-creds';
 
 function makeRedirectUri(req) {
     const port = req.get('port');
-    const redirectUri = `${req.protocol}://${req.get('host')}${port ? ':' + port : ''}${SPOTIFY_RECEIVE_CREDS_PATH}`;
-    return redirectUri;
+    return `${req.protocol}://${req.get('host')}${port ? ':' + port : ''}${SPOTIFY_RECEIVE_CREDS_PATH}`;
 }
 expressApp.get('/spotify/login', async (req, res) => {
     try {
         const redirectUri = makeRedirectUri(req);
-        const scopes = 'playlist-modify-private+playlist-read-private+user-library-read+user-library-modify';
-        res.redirect(`https://accounts.spotify.com/authorize?redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&client_id=${SPOTIFY_CLIENT_ID}&scope=${scopes}&`);
+        const scopes = 'playlist-read-private playlist-read-collaborative playlist-modify-public playlist-modify-private user-follow-modify user-follow-read user-library-read user-library-modify user-read-private user-read-birthdate user-read-email user-top-read';
+        res.redirect(`https://accounts.spotify.com/authorize?redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&client_id=${SPOTIFY_CLIENT_ID}&scope=${encodeURIComponent(scopes)}&`);
     } catch (reason) {
-        res.json({error: String(reason)});
+        res.json({error: reason});
         console.error(reason.stack);
     }
     res.end();
 });
+
+async function getSpotifyHistory() {
+    const encodedHistory = await MemCache.get('spotify-history');
+    return new Set(JSON.parse(encodedHistory));
+}
+
+async function addToSpotifyHistory(ids) {
+    const historySet = await getSpotifyHistory();
+    ids.forEach(it => historySet.add(it));
+    const reEncodedHistory = JSON.stringify(Array.from(historySet));
+    await MemCache.set(reEncodedHistory);
+}
 
 async function saveAccessCode(value) {
     return await MemCache.set('spotify-access-code', value);
@@ -105,7 +115,57 @@ async function makeSpotifyClient(req) {
     return spotifyApi;
 }
 
+const HISTORY_PLAYLIST = '0ly7f5t0ylwWIiW1wAtvHc';
+const INBOX_PLAYLIST = '7LbKQZYipf8CfqH2eWoz5Q';
+const PIPE_DREAM_PLAYLIST = '08vL7ksqd4ovzUb7AAcJi9';
+const limit = 100;
 
+async function getPagedPlaylist(spotifyApi, userId, playlistId, offset=0) {
+    console.log(`loading with offset ${offset}...`);
+    const rawPage = await spotifyApi.getPlaylistTracks(
+        userId,
+        playlistId,
+        { fields: "total,items(track(id))", offset, limit },
+    );
+    let nextOffset = offset + limit;
+    const moreNeeded = nextOffset < rawPage.body.total;
+    const ids = rawPage.body.items.map(it => it.track.id);
+    if (moreNeeded) {
+        console.log(`There are ${rawPage.body.total} total tracks, and we have loaded ${nextOffset}. We need to go deeper.`);
+        return [...ids, ...(await getPagedPlaylist(spotifyApi, userId, playlistId, nextOffset))];
+    } else {
+        console.log('We have loaded enough!');
+        return ids;
+    }
+}
+
+expressApp.get('/spotify/inbox', async (req, res) => {
+    try {
+        const spotifyApi = await makeSpotifyClient(req);
+
+        let inbox = new Set(await getPagedPlaylist(spotifyApi, HEN_SPOTIFY, INBOX_PLAYLIST));
+        const history = await getSpotifyHistory();
+
+        const newIds = [];
+        const oldIds = [];
+
+        inbox.forEach(it => {
+            (history.has(it) ? oldIds : newIds).push(it);
+        });
+
+        await spotifyApi.addTracksToPlaylist(HEN_SPOTIFY, PIPE_DREAM_PLAYLIST, newIds.slice(0, 10).map(it => `spotify:track:${it}`));
+
+        res.json({
+            success: "Loaded the inbox!",
+            old: oldIds,
+            new: newIds,
+        });
+    } catch (reason) {
+        res.json({error: reason});
+        console.error(reason.stack);
+    }
+    res.end();
+});
 
 expressApp.get(SPOTIFY_RECEIVE_CREDS_PATH, async (req, res) => {
     try {
