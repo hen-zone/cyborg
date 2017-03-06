@@ -1182,6 +1182,10 @@ media-typer@0.3.0:
   version "0.3.0"
   resolved "https://registry.yarnpkg.com/media-typer/-/media-typer-0.3.0.tgz#8710d7af0aa626f8fffa1ce00168545263255748"
 
+memjs:
+  version "0.10.0"
+  resolved "https://registry.yarnpkg.com/memjs/-/memjs-0.10.0.tgz#5dd549c8c8561aaca7a13e8339f4a7cd88c65efd"
+
 merge-descriptors@1.0.1:
   version "1.0.1"
   resolved "https://registry.yarnpkg.com/merge-descriptors/-/merge-descriptors-1.0.1.tgz#b00aaa556dd8b44568150ec9d1b953f3f90cbb61"
@@ -1223,6 +1227,10 @@ minimatch@^3.0.2:
 minimist@0.0.8:
   version "0.0.8"
   resolved "https://registry.yarnpkg.com/minimist/-/minimist-0.0.8.tgz#857fcabfc3397d2625b8228262e86aa7a011b05d"
+
+mjs:
+  version "1.0.0"
+  resolved "https://registry.yarnpkg.com/mjs/-/mjs-1.0.0.tgz#b9919ca1487b1f0e8417bcdb052ba261ceb63660"
 
 mkdirp@^0.5.1:
   version "0.5.1"

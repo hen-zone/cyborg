@@ -6,6 +6,7 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "node index.js",
+    "heroku-local": "heroku local",
     "logs": "heroku logs --tail"
   },
   "author": "",
@@ -19,6 +20,8 @@
     "babel-register": "^6.11.6",
     "body-parser": "^1.15.2",
     "express": "^4.14.0",
+    "memjs": "^0.10.0",
+    "mjs": "^1.0.0",
     "request": "^2.74.0",
     "request-promise": "^4.1.1",
     "spotify-web-api-node": "^2.3.6"

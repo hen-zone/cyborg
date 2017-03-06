@@ -5,6 +5,7 @@ import SpotifyWebApi from 'spotify-web-api-node';
 import {setBonusesForDays, applyRolloverForDate, setSmoothedWeightForDate, sendMessagesForWeightChange} from "./cyborgApi";
 import {incrementBeeminderGoal} from "./beeminderApi";
 import {validateDate, zeroPad} from "./mfp/util";
+import * as MemCache from './memcached';
 
 // const authCode = 'AQAfl5Y9hHEpLqo0ZDFFneWIBp95aNR3QToCowaPWgRLTCfiI7pQUPKEWBCeEDr9HpGj6ZXSUVKfB0XeMwdqaFEpafo4wFe8omDHDa240beHDr7t-c_oENDVXNbyLhFVk52hSEyL5mJI8K9FdHy1N-ijQxpRI7tALiWgf1LaK57oHklRNl8il2sFnwxQeGTfrSHkhJ1EFpgfK5TpYQBKDe7D4Not6C5kBbVoIAKPoo8v_VPkwY42r5-Ai3HXLXccyC5e3GDuDkSpQGSxa3Je9MG25HkxI1UtWmGzJYI4qxUhXABh';
 //
@@ -37,6 +38,8 @@ import {validateDate, zeroPad} from "./mfp/util";
 
 //noinspection JSUnresolvedVariable
 const port = process.env.PORT || 3000;
+
+
 
 const expressApp = express();
 
@@ -82,6 +85,31 @@ async function handleSetWeightForDate(weight, date) {
     console.log('END: handleSetWeightForDate');
     return smoothedWeight.toFixed(1);
 }
+
+expressApp.get('/set-data', async (req, res) => {
+    try {
+        const keyValPairs = Object.entries(req.query);
+        await Promise.all(keyValPairs.map(async pair => {
+            const [key, value] = pair;
+            await MemCache.set(key, value);
+        }));
+        res.json({"success": `Set the values`, "params": req.query});
+    } catch (reason) {
+        res.json({error: String(reason)});
+        console.error(reason.stack);
+    }
+    res.end();
+});
+
+expressApp.get('/get-data/:key', async (req, res) => {
+    try {
+        res.json(await MemCache.get(req.params.key));
+    } catch (reason) {
+        res.json({error: String(reason)});
+        console.error(reason.stack);
+    }
+    res.end();
+});
 
 expressApp.get('/brush-teeth', async (req, res) => {
     try {
@@ -177,5 +205,5 @@ expressApp.get('/accept-bonuses-from-workflow', async (req, res) => {
 });
 
 expressApp.listen(port, () => {
-    console.log('Started server!');
+    console.log(`Started server on port ${port}`);
 });
