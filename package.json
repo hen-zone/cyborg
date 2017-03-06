@@ -6,7 +6,7 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "node index.js",
-    "heroku-local": "heroku local",
+    "heroku-local": "heroku config -s > .env && heroku local",
     "logs": "heroku logs --tail"
   },
   "author": "",

@@ -7,34 +7,14 @@ import {incrementBeeminderGoal} from "./beeminderApi";
 import {validateDate, zeroPad} from "./mfp/util";
 import * as MemCache from './memcached';
 
-// const authCode = 'AQAfl5Y9hHEpLqo0ZDFFneWIBp95aNR3QToCowaPWgRLTCfiI7pQUPKEWBCeEDr9HpGj6ZXSUVKfB0XeMwdqaFEpafo4wFe8omDHDa240beHDr7t-c_oENDVXNbyLhFVk52hSEyL5mJI8K9FdHy1N-ijQxpRI7tALiWgf1LaK57oHklRNl8il2sFnwxQeGTfrSHkhJ1EFpgfK5TpYQBKDe7D4Not6C5kBbVoIAKPoo8v_VPkwY42r5-Ai3HXLXccyC5e3GDuDkSpQGSxa3Je9MG25HkxI1UtWmGzJYI4qxUhXABh';
-//
-// const spotifyApiPromise = (async () => {
-//     const spotifyApi = new SpotifyWebApi({
-//         clientId : 'fb91152cd5fd475d9878399c2cb0c6cb',
-//         clientSecret : '5b3e94fa7a6e473b86015bdd9320595d',
-//         redirectUri: 'http://localhost:3000/',
-//     });
-//     const granted = await spotifyApi.authorizationCodeGrant(authCode);
-//     spotifyApi.setAccessToken(granted.body['access_token']);
-//     spotifyApi.setRefreshToken(granted.body['refresh_token']);
-//     return spotifyApi;
-// })();
-//
-// const HEN_SPOTIFY = '1232511708';
-//
-//
-// // https://accounts.spotify.com/authorize?response_type=code&redirect_uri=http://localhost:3000/&scope=playlist-modify-private+playlist-read-private+user-library-read+user-library-modify&client_id=fb91152cd5fd475d9878399c2cb0c6cb
-//
-// (async function() {
-//     try {
-//         const spotifyApi = await spotifyApiPromise;
-//         return await spotifyApi.getMySavedTracks({limit: 100});
-//
-//     } catch(issue) {
-//         console.log(issue);
-//     }
-// })().then(console.log, console.error);
+const authCode = 'AQAfl5Y9hHEpLqo0ZDFFneWIBp95aNR3QToCowaPWgRLTCfiI7pQUPKEWBCeEDr9HpGj6ZXSUVKfB0XeMwdqaFEpafo4wFe8omDHDa240beHDr7t-c_oENDVXNbyLhFVk52hSEyL5mJI8K9FdHy1N-ijQxpRI7tALiWgf1LaK57oHklRNl8il2sFnwxQeGTfrSHkhJ1EFpgfK5TpYQBKDe7D4Not6C5kBbVoIAKPoo8v_VPkwY42r5-Ai3HXLXccyC5e3GDuDkSpQGSxa3Je9MG25HkxI1UtWmGzJYI4qxUhXABh';
+
+let SPOTIFY_CLIENT_ID = 'fb91152cd5fd475d9878399c2cb0c6cb';
+let SPOTIFY_CLIENT_SECRET = '5b3e94fa7a6e473b86015bdd9320595d';
+let SPOTIFY_REDIRECT_URI = 'http://localhost:3000/';
+
+const HEN_SPOTIFY = '1232511708';
+
 
 //noinspection JSUnresolvedVariable
 const port = process.env.PORT || 3000;
@@ -85,6 +65,71 @@ async function handleSetWeightForDate(weight, date) {
     console.log('END: handleSetWeightForDate');
     return smoothedWeight.toFixed(1);
 }
+
+let SPOTIFY_RECEIVE_CREDS_PATH = '/spotify/receive-creds';
+
+function makeRedirectUri(req) {
+    const port = req.get('port');
+    const redirectUri = `${req.protocol}://${req.get('host')}${port ? ':' + port : ''}${SPOTIFY_RECEIVE_CREDS_PATH}`;
+    return redirectUri;
+}
+expressApp.get('/spotify/login', async (req, res) => {
+    try {
+        const redirectUri = makeRedirectUri(req);
+        const scopes = 'playlist-modify-private+playlist-read-private+user-library-read+user-library-modify';
+        res.redirect(`https://accounts.spotify.com/authorize?redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&client_id=${SPOTIFY_CLIENT_ID}&scope=${scopes}&`);
+    } catch (reason) {
+        res.json({error: String(reason)});
+        console.error(reason.stack);
+    }
+    res.end();
+});
+
+async function saveAccessCode(value) {
+    return await MemCache.set('spotify-access-code', value);
+}
+
+async function saveRefreshCode(value) {
+    return await MemCache.set('spotify-refresh-code', value);
+}
+
+async function makeSpotifyClient(req) {
+    const spotifyApi = new SpotifyWebApi({
+        clientId: SPOTIFY_CLIENT_ID,
+        clientSecret: SPOTIFY_CLIENT_SECRET,
+        redirectUri: makeRedirectUri(req),
+    });
+
+    spotifyApi.setAccessToken(await MemCache.get('spotify-access-code'));
+    spotifyApi.setRefreshToken(await MemCache.get('spotify-refresh-code'));
+    return spotifyApi;
+}
+
+
+
+expressApp.get(SPOTIFY_RECEIVE_CREDS_PATH, async (req, res) => {
+    try {
+        const preAuthSpotifyApi = await makeSpotifyClient(req);
+
+        const granted = await preAuthSpotifyApi.authorizationCodeGrant(req.query.code);
+
+        saveAccessCode(granted.body['access_token']);
+        saveRefreshCode(granted.body['refresh_token']);
+
+        const authedSpotifyApi = await makeSpotifyClient(req);
+
+        res.json({
+            success: "Logged into spotify!",
+            query: req.query,
+            savedSongs: await authedSpotifyApi.getMySavedTracks({limit: 10}),
+        });
+    } catch (reason) {
+        res.json({error: String(reason)});
+        console.error(reason.stack);
+    }
+    res.end();
+});
+
 
 expressApp.get('/set-data', async (req, res) => {
     try {
