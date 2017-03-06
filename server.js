@@ -140,7 +140,7 @@ async function getPagedPlaylist(spotifyApi, userId, playlistId, offset=0) {
 
 async function inBatches(limit, list, asyncProcess) {
     let remaining = [...list];
-    while (true) {
+    while (remaining.length) {
         const subset = remaining.slice(0, limit);
         remaining = remaining.slice(limit);
         await asyncProcess(subset);
