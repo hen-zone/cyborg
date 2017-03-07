@@ -184,6 +184,7 @@ function getRandom(arr, n) {
 expressApp.get('/spotify/cut-pipe', async (req, res) => {
     try {
         const spotifyApi = await makeSpotifyClient(req);
+        await spotifyApi.refreshAccessToken();
         const pipeDream = await getPagedPlaylist(spotifyApi, HEN_SPOTIFY, PIPE_DREAM_PLAYLIST);
         console.log('loaded pipedream');
         const randomTracks = pipeDream.length > 30 ? getRandom(pipeDream, 30) : pipeDream;
@@ -214,6 +215,7 @@ expressApp.get('/spotify/cut-pipe', async (req, res) => {
 expressApp.get('/spotify/inbox', async (req, res) => {
     try {
         const spotifyApi = await makeSpotifyClient(req);
+        await spotifyApi.refreshAccessToken();
 
         const history = await getSpotifyHistory();
 
