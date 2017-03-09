@@ -112,8 +112,9 @@ async function makeSpotifyClient(req) {
         redirectUri: makeRedirectUri(req),
     });
 
-    spotifyApi.setAccessToken(await MemCache.get('spotify-access-code'));
     spotifyApi.setRefreshToken(await MemCache.get('spotify-refresh-code'));
+    const refreshAccessTokenResult = await spotifyApi.refreshAccessToken();
+    spotifyApi.setAccessToken(refreshAccessTokenResult.body.access_token);
     return spotifyApi;
 }
 
@@ -167,7 +168,7 @@ expressApp.get('/spotify/history', async (req, res) => {
     res.end();
 });
 
-function getRandom(arr, n) {
+function getRandomItem(arr, n) {
     var result = new Array(n),
         len = arr.length,
         taken = new Array(len);
@@ -184,10 +185,10 @@ function getRandom(arr, n) {
 expressApp.get('/spotify/cut-pipe', async (req, res) => {
     try {
         const spotifyApi = await makeSpotifyClient(req);
-        await spotifyApi.refreshAccessToken();
+
         const pipeDream = await getPagedPlaylist(spotifyApi, HEN_SPOTIFY, PIPE_DREAM_PLAYLIST);
         console.log('loaded pipedream');
-        const randomTracks = pipeDream.length > 30 ? getRandom(pipeDream, 30) : pipeDream;
+        const randomTracks = pipeDream.length > 30 ? getRandomItem(pipeDream, 30) : pipeDream;
 
 
         const lastPipeNumber = Number(await MemCache.get('spotify-pipe-number') || 0);
@@ -215,7 +216,6 @@ expressApp.get('/spotify/cut-pipe', async (req, res) => {
 expressApp.get('/spotify/inbox', async (req, res) => {
     try {
         const spotifyApi = await makeSpotifyClient(req);
-        await spotifyApi.refreshAccessToken();
 
         const history = await getSpotifyHistory();
 
