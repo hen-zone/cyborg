@@ -148,13 +148,15 @@ async function getSinglePlaylistPage(spotifyApi, userId, playlistId, offset=0) {
     return { total, uris }
 }
 
-async function inBatches(limit, list, asyncProcess) {
+async function inParallelBatches(limit, list, asyncProcess) {
     let remaining = [...list];
+    let tasks = [];
     while (remaining.length) {
         const subset = remaining.slice(0, limit);
         remaining = remaining.slice(limit);
-        await asyncProcess(subset);
+        tasks.push(asyncProcess(subset));
     }
+    return await Promise.all(tasks);
 }
 
 expressApp.get('/spotify/history', async (req, res) => {
@@ -219,14 +221,13 @@ expressApp.get('/spotify/inbox', async (req, res) => {
 
         const history = await getSpotifyHistory();
 
-        const playlistSpecs = [
+        const inboxPlaylistSpecs = [
             ['inbox', HEN_SPOTIFY, INBOX_PLAYLIST],
             ['henDiscover', 'spotify', '37i9dQZEVXcORpwpJL9ceh'],
             ['henReleaseRadar', 'spotify', '37i9dQZEVXbbXNiJeLtLv3'],
             ['djoDiscover', 'spotify', '37i9dQZEVXcNPxeqxshEf9'],
             ['livvyDiscover', 'spotify', '37i9dQZEVXcJP0NgDg2X0T'],
             ['desmondDiscover', 'spotify', '37i9dQZEVXcISf3FIRhvUD'],
-            ['henShazamTracks', '1232511708', '1JBCsNUmAdZw4xIkZOW90r'],
             ['pitchforkOfficialTracks', 'pitchfork', '7q503YgioHAbo1iOIa67M8'],
             ['pitchforkUnofficialAlbums', 'kenove', '6QdRN6dPnook9KPezrggaO'],
             ['jjjHitList', 'triple.j.abc', '7vFQNWXoblEJXpbnTuyz76'],
@@ -236,7 +237,13 @@ expressApp.get('/spotify/inbox', async (req, res) => {
             // ['djoRadar', 'spotify', '37i9dQZEVXbwEaUu0bjFU6'],
         ];
 
-        const actualPlaylists = await Promise.all(playlistSpecs.map(async spec => {
+        const favePlaylistSpecs = [
+            ['pyroFaves', '1232511708', '3ALEQUBsfYKggO5ZULf8xN'],
+            ['henShazamTracks', '1232511708', '1JBCsNUmAdZw4xIkZOW90r'],
+        ];
+
+
+        const actualPlaylists = await Promise.all(inboxPlaylistSpecs.map(async spec => {
             return [spec[0], await getPagedPlaylist(spotifyApi, spec[1], spec[2])];
         }));
 
@@ -253,7 +260,7 @@ expressApp.get('/spotify/inbox', async (req, res) => {
 
         console.log(`Scanned ${totalScanned} tracks; found ${allNewTracks.length} new ones.`);
 
-        await inBatches(70, allNewTracks, async(batch) => {
+        await inParallelBatches(70, allNewTracks, async(batch) => {
             console.log(`about to add ${batch.length} tracks to pipe dream...:`, batch);
             await spotifyApi.addTracksToPlaylist(
                 HEN_SPOTIFY,
@@ -264,16 +271,26 @@ expressApp.get('/spotify/inbox', async (req, res) => {
             await addToSpotifyHistory(batch);
         });
 
-        await inBatches(70, actualPlaylists[0][1], async them => {
+        await inParallelBatches(70, actualPlaylists[0][1], async them => {
             console.log(`about to remove ${them.length} tracks from inbox...`);
             await spotifyApi.removeTracksFromPlaylist(HEN_SPOTIFY, INBOX_PLAYLIST, them.map(uri => ({uri})));
         });
 
+        let totalFavesFound = 0;
+        await Promise.all(favePlaylistSpecs.map(async spec => {
+            const [playlistName, userName, playlistId] = spec;
+            const tracks = await getPagedPlaylist(spotifyApi, userName, playlistId);
+            if (tracks.length) {
+                await spotifyApi.addToMySavedTracks(tracks.map(it => it.split(':').reverse()[0]));
+            }
+            totalFavesFound += tracks.length;
+        }));
 
         res.json({
             success: "Processed.",
             addedToPipeDream: allNewTracks.length,
             totalScanned: totalScanned,
+            possibleNewFaves: totalFavesFound,
         });
     } catch (reason) {
         res.json({error: reason});
