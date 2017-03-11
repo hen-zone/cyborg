@@ -178,8 +178,9 @@ export async function receiveSpotifyCreds(req) {
 export async function scanInboxes(req) {
     const spotifyApi = await makeSpotifyClient(req);
 
+
+
     const inboxPlaylistSpecs = [
-        ['inbox', HEN_SPOTIFY, INBOX_PLAYLIST],
         ['henDiscover', 'spotify', '37i9dQZEVXcORpwpJL9ceh'],
         ['henReleaseRadar', 'spotify', '37i9dQZEVXbbXNiJeLtLv3'],
         ['djoDiscover', 'spotify', '37i9dQZEVXcNPxeqxshEf9'],
@@ -199,18 +200,27 @@ export async function scanInboxes(req) {
         ['henShazamTracks', HEN_SPOTIFY, '1JBCsNUmAdZw4xIkZOW90r'],
     ];
 
-    const inboxTrackSet = new Set();
+    const allInboxTrackSet = new Set();
+    let myInboxTracks = [];
 
-    await Promise.all(inboxPlaylistSpecs.map(async spec => {
-        const [nickname, user, id] = spec;
-        let tracks = await getPagedPlaylist(spotifyApi, user, id);
-        tracks.forEach(it => inboxTrackSet.add(it));
-    }));
+    await Promise.all([
+        (async() => {
+            const tracks = await getPagedPlaylist(spotifyApi, HEN_SPOTIFY, INBOX_PLAYLIST);
+            tracks.forEach(it => allInboxTrackSet.add(it));
+            myInboxTracks.push(...tracks);
+        })(),
+
+        Promise.all(inboxPlaylistSpecs.map(async spec => {
+            const [nickname, user, id] = spec;
+            const tracks = await getPagedPlaylist(spotifyApi, user, id);
+            tracks.forEach(it => allInboxTrackSet.add(it));
+        }))
+    ]);
 
     const allHistoryURIs = (await getSpotifyTable().select('uri')).map(it => it.uri);
 
     const historySet = new Set(allHistoryURIs);
-    const newTracks = Array.from(inboxTrackSet).filter(it => ! historySet.has(it));
+    const newTracks = Array.from(allInboxTrackSet).filter(it => ! historySet.has(it));
 
     // There is a race condition here, but it will fail atomically. if one of these tracks
     // gets added to history before we write it, this write will fail, but we can just run the whole
@@ -219,7 +229,11 @@ export async function scanInboxes(req) {
         await getSpotifyTable().insert(newTracks.map(uri => ({uri, dispensed: false})));
     }
 
-    // TODO: clear my inbox here.
+    // delete tracks from inbox.
+    await inParallelBatches(70, myInboxTracks, async subset => {
+        const tracks = subset.map(uri => ({uri}));
+        await spotifyApi.removeTracksFromPlaylist(HEN_SPOTIFY, INBOX_PLAYLIST, tracks)
+    });
 
     let totalFavesFound = 0;
     await Promise.all(favePlaylistSpecs.map(async spec => {
@@ -232,7 +246,7 @@ export async function scanInboxes(req) {
     }));
 
     // TODO: save the faves as already-dispensed tracks in the history
-    // TODO: and, if they already in history, update them to be marked as dispensed
+    // TODO: and, if they are already in history, update them to be marked as dispensed
     // TODO: clear the faves playlists here
 
     return { numNewInboxTracks: newTracks.length, possibleNewFaves: totalFavesFound };
