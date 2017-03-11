@@ -5,7 +5,6 @@ import Knex from 'knex';
 
 const SPOTIFY_CLIENT_ID = 'fb91152cd5fd475d9878399c2cb0c6cb';
 const SPOTIFY_CLIENT_SECRET = '5b3e94fa7a6e473b86015bdd9320595d';
-const SPOTIFY_REDIRECT_URI = 'http://localhost:3000/';
 
 const HEN_SPOTIFY = '1232511708';
 
