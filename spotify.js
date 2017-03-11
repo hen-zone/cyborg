@@ -8,13 +8,13 @@ const SPOTIFY_CLIENT_SECRET = '5b3e94fa7a6e473b86015bdd9320595d';
 
 const HEN_SPOTIFY = '1232511708';
 
-// desired schema:
-// SpotifyTracks(id auto, uri string, dispensed bool = false)
 //noinspection JSUnresolvedVariable
 const dbClient = Knex({
     client: 'pg',
     connection: process.env.DATABASE_URL + '?ssl=true'
 });
+
+const getSpotifyTable = () => dbClient ('SpotifyTracks');
 
 async function createTableSpotifyTracks(dbClient) {
     // Can't run this every time bc the index clause makes it fail ;__;
@@ -36,7 +36,7 @@ export function makeSpotifyRedirectUri(req) {
 
 
 export async function getSpotifyHistory() {
-    return await dbClient('SpotifyTracks').select()
+    return await getSpotifyTable().select()
 }
 
 async function incrementPipeNumber() {
@@ -47,7 +47,7 @@ async function incrementPipeNumber() {
 export async function cutPipe(req) {
     const spotifyApi = await makeSpotifyClient(req);
 
-    const pipeDream = await dbClient('SpotifyTracks').select('uri').where({dispensed: false});
+    const pipeDream = await getSpotifyTable().select('uri').where({dispensed: false});
 
     // pipeDream is a list of URIs.
     // we should select all undispensed tracks from the DB, then get random entries, then map them to their URIs.
@@ -67,7 +67,7 @@ export async function cutPipe(req) {
     const newPlaylistId = playlistInfo.body.id;
     console.log(playlistURIs);
     await spotifyApi.addTracksToPlaylist(HEN_SPOTIFY, newPlaylistId, playlistURIs);
-    await dbClient('SpotifyTracks').whereIn('uri', playlistURIs).update({dispensed: true});
+    await getSpotifyTable().whereIn('uri', playlistURIs).update({dispensed: true});
 
 
     return {
@@ -206,7 +206,7 @@ export async function scanInboxes(req) {
         tracks.forEach(it => inboxTrackSet.add(it));
     }));
 
-    const allHistoryURIs = (await dbClient('SpotifyTracks').select('uri')).map(it => it.uri);
+    const allHistoryURIs = (await getSpotifyTable().select('uri')).map(it => it.uri);
 
     const historySet = new Set(allHistoryURIs);
     const newTracks = Array.from(inboxTrackSet).filter(it => ! historySet.has(it));
@@ -215,7 +215,7 @@ export async function scanInboxes(req) {
     // gets added to history before we write it, this write will fail, but we can just run the whole
     // endpoint again, and nothing will have been mutated.
     if (newTracks.length) {
-        await dbClient('SpotifyTracks').insert(newTracks.map(uri => ({uri, dispensed: false})));
+        await getSpotifyTable().insert(newTracks.map(uri => ({uri, dispensed: false})));
     }
 
     // TODO: clear my inbox here.
