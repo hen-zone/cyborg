@@ -20,8 +20,10 @@
     "babel-register": "^6.11.6",
     "body-parser": "^1.15.2",
     "express": "^4.14.0",
+    "knex": "^0.12.7",
     "memjs": "^0.10.0",
     "mjs": "^1.0.0",
+    "pg": "^6.1.4",
     "request": "^2.74.0",
     "request-promise": "^4.1.1",
     "spotify-web-api-node": "^2.3.6"
