@@ -1,14 +1,38 @@
 import SpotifyWebApi from "spotify-web-api-node";
 import * as MemCache from "./memcached";
+import Knex from 'knex';
 
 
-let SPOTIFY_CLIENT_ID = 'fb91152cd5fd475d9878399c2cb0c6cb';
-let SPOTIFY_CLIENT_SECRET = '5b3e94fa7a6e473b86015bdd9320595d';
-let SPOTIFY_REDIRECT_URI = 'http://localhost:3000/';
+const SPOTIFY_CLIENT_ID = 'fb91152cd5fd475d9878399c2cb0c6cb';
+const SPOTIFY_CLIENT_SECRET = '5b3e94fa7a6e473b86015bdd9320595d';
+const SPOTIFY_REDIRECT_URI = 'http://localhost:3000/';
 
 const HEN_SPOTIFY = '1232511708';
 
+// desired schema:
+// SpotifyTracks(id auto, uri string, dispensed bool = false)
+//noinspection JSUnresolvedVariable
+const dbClient = Knex({
+    client: 'pg',
+    connection: process.env.DATABASE_URL + '?ssl=true'
+});
 
+async function createTableSpotifyTracks(dbClient) {
+    // Can't run this every time bc the index clause makes it fail ;__;
+    console.log ('about to create table...');
+    await dbClient.schema.createTableIfNotExists('SpotifyTracks', table => {
+        table.increments();
+        table.string('uri').index().unique();
+        table.bool('dispensed').notNullable().defaultTo(false);
+    });
+    console.log ('Created table!');
+}
+
+(async () => {
+    let allTracks = await dbClient('SpotifyTracks').select('*');
+    const numRemaining = allTracks.filter(it => ! it.dispensed).length;
+    console.log(`${allTracks.length} known tracks; ${allTracks.length - numRemaining} dispensed; ${numRemaining} remaining`);
+})();
 
 
 export const SPOTIFY_RECEIVE_CREDS_PATH = '/spotify/receive-creds';
@@ -20,40 +44,39 @@ export function makeSpotifyRedirectUri(req) {
 
 
 export async function getSpotifyHistory() {
-    const encodedHistory = await MemCache.get('spotify-history');
-    return new Set(JSON.parse(encodedHistory));
+    return await dbClient('SpotifyTracks').select()
 }
 
-async function addToSpotifyHistory(ids) {
-    const historySet = await getSpotifyHistory();
-    ids.forEach(it => historySet.add(it));
-    const reEncodedHistory = JSON.stringify(Array.from(historySet));
-    return await MemCache.set('spotify-history', reEncodedHistory);
+async function incrementPipeNumber() {
+    const nextPipeNumber = Number(await MemCache.get('spotify-pipe-number') || 0) + 1;
+    await MemCache.set('spotify-pipe-number', String(nextPipeNumber));
+    return nextPipeNumber;
 }
-
 export async function cutPipe(req) {
     const spotifyApi = await makeSpotifyClient(req);
 
-    const pipeDream = await getPagedPlaylist(spotifyApi, HEN_SPOTIFY, PIPE_DREAM_PLAYLIST);
-    console.log('loaded pipedream');
-    const randomTracks = pipeDream.length > 30 ? getRandomItems(pipeDream, 30) : pipeDream;
+    const pipeDream = await dbClient('SpotifyTracks').select('uri').where({dispensed: false});
+
+    // pipeDream is a list of URIs.
+    // we should select all undispensed tracks from the DB, then get random entries, then map them to their URIs.
+    let PIPE_SIZE = 30;
+    const playlistRows = pipeDream.length > PIPE_SIZE ? getRandomItems(pipeDream, PIPE_SIZE) : pipeDream;
+    const playlistURIs = playlistRows.map(it => it.uri);
 
 
-    const lastPipeNumber = Number(await MemCache.get('spotify-pipe-number') || 0);
-    const nextPipeNumber = lastPipeNumber + 1;
-    await MemCache.set('spotify-pipe-number', String(nextPipeNumber));
+    const nextPipeNumber = await incrementPipeNumber();
 
     let name = `Pyro Pipe #${nextPipeNumber}`;
     console.log('about to create playlist');
     const playlistInfo = await spotifyApi.createPlaylist(HEN_SPOTIFY, name);
     console.log('created playlist');
     const newPlaylistId = playlistInfo.body.id;
-    console.log(randomTracks);
-    await spotifyApi.addTracksToPlaylist(HEN_SPOTIFY, newPlaylistId, randomTracks);
-    await spotifyApi.removeTracksFromPlaylist(HEN_SPOTIFY, PIPE_DREAM_PLAYLIST, randomTracks.map(uri => ({uri})));
+    console.log(playlistURIs);
+    await spotifyApi.addTracksToPlaylist(HEN_SPOTIFY, newPlaylistId, playlistURIs);
+    await dbClient('SpotifyTracks').whereIn('uri', playlistURIs).update({dispensed: true});
 
 
-    return {name: name, id: newPlaylistId, uri: playlistInfo.body.uri, tracks: randomTracks};
+    return {name: name, id: newPlaylistId, uri: playlistInfo.body.uri, tracks: playlistRows};
 }
 
 
@@ -148,13 +171,11 @@ export async function receiveSpotifyCreds(req) {
 
     const authedSpotifyApi = await makeSpotifyClient(req);
 
-    let confirmationSong = await authedSpotifyApi.getMySavedTracks({limit: 1});
-    return confirmationSong;
+    return await authedSpotifyApi.getMySavedTracks({limit: 1});
 }
 
 export async function scanInboxes(req) {
     const spotifyApi = await makeSpotifyClient(req);
-    const history = await getSpotifyHistory();
 
     const inboxPlaylistSpecs = [
         ['inbox', HEN_SPOTIFY, INBOX_PLAYLIST],
@@ -173,43 +194,31 @@ export async function scanInboxes(req) {
     ];
 
     const favePlaylistSpecs = [
-        ['pyroFaves', '1232511708', '3ALEQUBsfYKggO5ZULf8xN'],
-        ['henShazamTracks', '1232511708', '1JBCsNUmAdZw4xIkZOW90r'],
+        ['pyroFaves', HEN_SPOTIFY, '3ALEQUBsfYKggO5ZULf8xN'],
+        ['henShazamTracks', HEN_SPOTIFY, '1JBCsNUmAdZw4xIkZOW90r'],
     ];
 
+    const inboxTrackSet = new Set();
 
-    const actualPlaylists = await Promise.all(inboxPlaylistSpecs.map(async spec => {
-        return [spec[0], await getPagedPlaylist(spotifyApi, spec[1], spec[2])];
+    await Promise.all(inboxPlaylistSpecs.map(async spec => {
+        const [nickname, user, id] = spec;
+        let tracks = await getPagedPlaylist(spotifyApi, user, id);
+        tracks.forEach(it => inboxTrackSet.add(it));
     }));
 
-    let allNewTracks = [];
-    let totalScanned = 0;
+    const allHistoryURIs = (await dbClient('SpotifyTracks').select('uri')).map(it => it.uri);
 
-    actualPlaylists.forEach(pair => {
-        const [name, tracks] = pair;
-        tracks.forEach(uri => {
-            if (!history.has(uri)) allNewTracks.push(uri);
-            ++totalScanned;
-        })
-    });
+    const historySet = new Set(allHistoryURIs);
+    const newTracks = Array.from(inboxTrackSet).filter(it => ! historySet.has(it));
 
-    console.log(`Scanned ${totalScanned} tracks; found ${allNewTracks.length} new ones.`);
+    // There is a race condition here, but it will fail atomically. if one of these tracks
+    // gets added to history before we write it, this write will fail, but we can just run the whole
+    // endpoint again, and nothing will have been mutated.
+    if (newTracks.length) {
+        await dbClient('SpotifyTracks').insert(newTracks.map(uri => ({uri, dispensed: false})));
+    }
 
-    await inParallelBatches(70, allNewTracks, async(batch) => {
-        console.log(`about to add ${batch.length} tracks to pipe dream...:`, batch);
-        await spotifyApi.addTracksToPlaylist(
-            HEN_SPOTIFY,
-            PIPE_DREAM_PLAYLIST,
-            batch,
-        );
-        console.log(`about to add ${batch.length} tracks to history...`);
-        await addToSpotifyHistory(batch);
-    });
-
-    await inParallelBatches(70, actualPlaylists[0][1], async them => {
-        console.log(`about to remove ${them.length} tracks from inbox...`);
-        await spotifyApi.removeTracksFromPlaylist(HEN_SPOTIFY, INBOX_PLAYLIST, them.map(uri => ({uri})));
-    });
+    // TODO: clear my inbox here.
 
     let totalFavesFound = 0;
     await Promise.all(favePlaylistSpecs.map(async spec => {
@@ -220,7 +229,12 @@ export async function scanInboxes(req) {
         }
         totalFavesFound += tracks.length;
     }));
-    return { allNewTracks, totalScanned, totalFavesFound };
+
+    // TODO: save the faves as already-dispensed tracks in the history
+    // TODO: and, if they already in history, update them to be marked as dispensed
+    // TODO: clear the faves playlists here
+
+    return { numNewInboxTracks: newTracks.length, possibleNewFaves: totalFavesFound };
 }
 
 

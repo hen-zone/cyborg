@@ -1,11 +1,18 @@
 import express from "express";
 import bodyParser from "body-parser";
-import SpotifyWebApi from "spotify-web-api-node";
-import {setBonusesForDays, applyRolloverForDate, setSmoothedWeightForDate} from "./cyborgApi";
+import {setBonusesForDays, applyRolloverForDate} from "./cyborgApi";
 import {incrementBeeminderGoal} from "./beeminderApi";
-import {validateDate, zeroPad} from "./mfp/util";
+import {validateDate} from "./mfp/util";
 import * as MemCache from "./memcached";
-import {receiveSpotifyCreds, getSpotifyHistory, cutPipe, scanInboxes, SPOTIFY_RECEIVE_CREDS_PATH, makeSpotifyRedirectUri} from "./spotify";
+import {
+    receiveSpotifyCreds,
+    getSpotifyHistory,
+    cutPipe,
+    scanInboxes,
+    SPOTIFY_RECEIVE_CREDS_PATH,
+    makeSpotifyRedirectUri
+} from "./spotify";
+import {handleSetWeightForDate, parseTweet} from "./body-stuff";
 
 const authCode = 'AQAfl5Y9hHEpLqo0ZDFFneWIBp95aNR3QToCowaPWgRLTCfiI7pQUPKEWBCeEDr9HpGj6ZXSUVKfB0XeMwdqaFEpafo4wFe8omDHDa240beHDr7t-c_oENDVXNbyLhFVk52hSEyL5mJI8K9FdHy1N-ijQxpRI7tALiWgf1LaK57oHklRNl8il2sFnwxQeGTfrSHkhJ1EFpgfK5TpYQBKDe7D4Not6C5kBbVoIAKPoo8v_VPkwY42r5-Ai3HXLXccyC5e3GDuDkSpQGSxa3Je9MG25HkxI1UtWmGzJYI4qxUhXABh';
 
@@ -35,37 +42,6 @@ expressApp.get('/favicon', async(req, res) => {
     res.json("Nothing here lol");
 });
 
-function normalizeDate(date) {
-    try {
-        return new Date(date.split(' at ')[0]).toISOString().split('T')[0];
-    }
-    catch(reason) {
-        return '';
-    }
-}
-
-async function handleSetWeightForDate(weight, date) {
-    console.log('START: handleSetWeightForDate');
-    const weightNum = Number(weight);
-    const normalizedDate = normalizeDate(date);
-    validateDate(normalizedDate);
-    console.log('Validated date.');
-
-    if (weightNum !== weightNum) {
-        throw new Error(`weight was not a number: ${weight}`);
-    }
-    console.log('Validated weight.');
-
-    const smoothedWeight = (await setSmoothedWeightForDate(date, weightNum));
-    console.log('Done setting weight in MFP.');
-
-    await incrementBeeminderGoal('weigh', true);
-    console.log('Done applying beeminder increment.');
-
-    console.log('END: handleSetWeightForDate');
-    return smoothedWeight.toFixed(1);
-}
-
 expressApp.get('/spotify/login', async (req, res) => {
     try {
         const redirectUri = makeSpotifyRedirectUri(req);
@@ -77,10 +53,6 @@ expressApp.get('/spotify/login', async (req, res) => {
     }
     res.end();
 });
-
-
-
-
 
 expressApp.get('/spotify/history', async (req, res) => {
     try {
@@ -109,13 +81,11 @@ expressApp.get('/spotify/cut-pipe', async (req, res) => {
 expressApp.get('/spotify/inbox', async (req, res) => {
     try {
 
-        let { allNewTracks, totalScanned, totalFavesFound } = await scanInboxes(req);
+        let result = await scanInboxes(req);
 
         res.json({
             success: "Processed.",
-            addedToPipeDream: allNewTracks.length,
-            totalScanned: totalScanned,
-            possibleNewFaves: totalFavesFound,
+            ...result,
         });
     } catch (reason) {
         res.json({error: reason});
@@ -202,17 +172,7 @@ expressApp.get('/set-weight-for-date', async (req, res) => {
     console.log('END: handling set-weight-for-date');
 });
 
-function parseMappings(mappings) {
-    try {
-        const result = JSON.parse(decodeURIComponent(mappings));
-        if (! result || typeof result.length !== 'number') {
-            throw new Error();
-        }
-        return result;
-    } catch (reason) {
-        throw new Error('Mappings were not a valid JSON array.')
-    }
-}
+
 
 expressApp.get('/apply-rollover', async (req, res) => {
     try {
@@ -230,19 +190,20 @@ expressApp.post('/parse-tweet', async (req, res) => {
     const tweet = req.body;
     res.json({success: "Nice! Thanks for this tasty tweet to parse!"});
     res.end();
-
-    if (! /#myfitnesspal/.test(tweet)) {
-        console.log('not an MFP tweet; dropping.');
-        return;
-    } else {
-        const diaryNoticeParts = tweet.match(/completed his food and exercise diary for (\S+)/);
-        if (diaryNoticeParts) {
-            const [month, day, year] = diaryNoticeParts[1].split('/');
-            const normalizedDate = `${year}-${zeroPad(month)}-${zeroPad(day)}`;
-            await applyRolloverForDate(normalizedDate);
-        }
-    }
+    await parseTweet(tweet);
 });
+
+function parseMappings(mappings) {
+    try {
+        const result = JSON.parse(decodeURIComponent(mappings));
+        if (! result || typeof result.length !== 'number') {
+            throw new Error();
+        }
+        return result;
+    } catch (reason) {
+        throw new Error('Mappings were not a valid JSON array.')
+    }
+}
 
 expressApp.get('/accept-bonuses-from-workflow', async (req, res) => {
     try {
