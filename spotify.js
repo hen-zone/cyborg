@@ -28,13 +28,6 @@ async function createTableSpotifyTracks(dbClient) {
     console.log ('Created table!');
 }
 
-(async () => {
-    let allTracks = await dbClient('SpotifyTracks').select('*');
-    const numRemaining = allTracks.filter(it => ! it.dispensed).length;
-    console.log(`${allTracks.length} known tracks; ${allTracks.length - numRemaining} dispensed; ${numRemaining} remaining`);
-})();
-
-
 export const SPOTIFY_RECEIVE_CREDS_PATH = '/spotify/receive-creds';
 
 export function makeSpotifyRedirectUri(req) {
@@ -59,7 +52,7 @@ export async function cutPipe(req) {
 
     // pipeDream is a list of URIs.
     // we should select all undispensed tracks from the DB, then get random entries, then map them to their URIs.
-    let PIPE_SIZE = 2;
+    let PIPE_SIZE = 30;
     const playlistRows = pipeDream.length > PIPE_SIZE ? getRandomItems(pipeDream, PIPE_SIZE) : pipeDream;
     const playlistURIs = playlistRows.map(it => it.uri);
 
