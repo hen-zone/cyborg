@@ -59,9 +59,11 @@ export async function cutPipe(req) {
 
     // pipeDream is a list of URIs.
     // we should select all undispensed tracks from the DB, then get random entries, then map them to their URIs.
-    let PIPE_SIZE = 30;
+    let PIPE_SIZE = 2;
     const playlistRows = pipeDream.length > PIPE_SIZE ? getRandomItems(pipeDream, PIPE_SIZE) : pipeDream;
     const playlistURIs = playlistRows.map(it => it.uri);
+
+    const numRemaining = pipeDream.length - playlistURIs.length;
 
 
     const nextPipeNumber = await incrementPipeNumber();
@@ -76,7 +78,13 @@ export async function cutPipe(req) {
     await dbClient('SpotifyTracks').whereIn('uri', playlistURIs).update({dispensed: true});
 
 
-    return {name: name, id: newPlaylistId, uri: playlistInfo.body.uri, tracks: playlistRows};
+    return {
+        name: name,
+        numRemaining,
+        id: newPlaylistId,
+        uri: playlistInfo.body.uri,
+        tracks: playlistRows,
+    };
 }
 
 
