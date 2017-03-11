@@ -14,12 +14,13 @@ const dbClient = Knex({
     connection: process.env.DATABASE_URL + '?ssl=true'
 });
 
-const getSpotifyTable = () => dbClient ('SpotifyTracks');
+const SPOTIFY_TABLE = 'SpotifyTracks';
+const getSpotifyTable = () => dbClient(SPOTIFY_TABLE);
 
 async function createTableSpotifyTracks(dbClient) {
     // Can't run this every time bc the index clause makes it fail ;__;
     console.log ('about to create table...');
-    await dbClient.schema.createTableIfNotExists('SpotifyTracks', table => {
+    await dbClient.schema.createTableIfNotExists(SPOTIFY_TABLE, table => {
         table.increments();
         table.string('uri').index().unique();
         table.bool('dispensed').notNullable().defaultTo(false);
