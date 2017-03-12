@@ -61,7 +61,7 @@ export async function cutPipe(req) {
 
     const nextPipeNumber = await incrementPipeNumber();
 
-    let name = `Pyro Kinesis #${nextPipeNumber}`;
+    let name = `Pyro Pack #${nextPipeNumber}`;
     console.log('about to create playlist');
     const playlistInfo = await spotifyApi.createPlaylist(HEN_SPOTIFY, name);
     console.log('created playlist');
