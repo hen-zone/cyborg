@@ -177,12 +177,12 @@ export async function scanInboxes(req) {
         ['henDiscover', 'spotify', '37i9dQZEVXcORpwpJL9ceh'],
         ['henReleaseRadar', 'spotify', '37i9dQZEVXbbXNiJeLtLv3'],
         ['djoDiscover', 'spotify', '37i9dQZEVXcNPxeqxshEf9'],
-        ['livvyDiscover', 'spotify', '37i9dQZEVXcJP0NgDg2X0T'],
         ['desmondDiscover', 'spotify', '37i9dQZEVXcISf3FIRhvUD'],
         ['pitchforkOfficialTracks', 'pitchfork', '7q503YgioHAbo1iOIa67M8'],
         ['pitchforkUnofficialAlbums', 'kenove', '6QdRN6dPnook9KPezrggaO'],
         ['jjjHitList', 'triple.j.abc', '7vFQNWXoblEJXpbnTuyz76'],
-        ['pitchforkUnofficialTracks', 'szymonczarnowski', '2LkZTDKWPelJv7HNY9rQV7'],
+        // ['livvyDiscover', 'spotify', '37i9dQZEVXcJP0NgDg2X0T'],
+        // ['pitchforkUnofficialTracks', 'szymonczarnowski', '2LkZTDKWPelJv7HNY9rQV7'],
         // ['izaakDiscover', 'spotify', '37i9dQZEVXcDc5DQak61yg'],
         // ['izaakRadar', 'spotify', '37i9dQZEVXbe7LBY0sEzoU'],
         // ['djoRadar', 'spotify', '37i9dQZEVXbwEaUu0bjFU6'],
@@ -193,6 +193,7 @@ export async function scanInboxes(req) {
         ['henShazamTracks', HEN_SPOTIFY, '1JBCsNUmAdZw4xIkZOW90r'],
     ];
 
+    // We use a set here to deduplicate overlaps between the source playlists
     const allInboxTrackSet = new Set();
     let myInboxTracks = [];
 
