@@ -43,17 +43,52 @@ async function incrementPipeNumber() {
     await MemCache.set('spotify-pipe-number', String(nextPipeNumber));
     return nextPipeNumber;
 }
+
+function orderByString(list, predicate) {
+    const orderables = list.map(it => [predicate(it), it]);
+    orderables.sort();
+    return orderables.map(it => it[1]);
+}
+
+function shuffled(list) {
+    const output = [...list];
+    for (let i = output.length; i; i--) {
+        const j = Math.floor(Math.random() * i);
+        const mover = output[i - 1];
+        output[i - 1] = output[j];
+        output[j] = mover;
+    }
+    return output;
+}
+
 export async function cutPipe(req) {
     const spotifyApi = await makeSpotifyClient(req);
 
-    const pipeDream = await getSpotifyTable().select('uri').where({ dispensed: false });
+    const pipeDream = await getSpotifyTable().select('uri', 'added').where({ dispensed: false });
+
+    const ordered = orderByString(pipeDream, it => it.added).reverse();
+
+    const newestTracks = ordered.slice(0, 150);
+    const oldestTracks = ordered.slice(150);
+
+    // order by decreasing time.
 
     // pipeDream is a list of URIs.
     // we should select all undispensed tracks from the DB, then get random entries, then map them to their URIs.
-    let PIPE_SIZE = 30;
-    const playlistRows = pipeDream.length > PIPE_SIZE
-        ? getRandomItems(pipeDream, PIPE_SIZE)
-        : pipeDream;
+    let HALF_SIZE = 30;
+
+    const newPlaylistRows = newestTracks.length > HALF_SIZE
+        ? getRandomItems(newestTracks, HALF_SIZE)
+        : newestTracks;
+
+    const oldPlaylistRows = oldestTracks.length > HALF_SIZE
+        ? getRandomItems(oldestTracks, HALF_SIZE)
+        : oldestTracks;
+
+    const playlistRows = shuffled(newPlaylistRows.concat(oldPlaylistRows));
+
+    // TODO: mix them together
+
     const playlistURIs = playlistRows.map(it => it.uri);
 
     const numRemaining = pipeDream.length - playlistURIs.length;
@@ -170,6 +205,12 @@ export async function receiveSpotifyCreds(req) {
     return await authedSpotifyApi.getMySavedTracks({ limit: 1 });
 }
 
+async function addTracks(uris, options = {}) {
+    return await getSpotifyTable().insert(
+        uris.map(uri => ({ uri, added: Date.now(), ...options }))
+    );
+}
+
 export async function scanInboxes(req) {
     const spotifyApi = await makeSpotifyClient(req);
 
@@ -222,7 +263,7 @@ export async function scanInboxes(req) {
     // gets added to history before we write it, this write will fail, but we can just run the whole
     // endpoint again, and nothing will have been mutated.
     if (newTracks.length) {
-        await getSpotifyTable().insert(newTracks.map(uri => ({ uri, dispensed: false })));
+        await addTracks(newTracks, { dispensed: false });
     }
 
     // delete tracks from inbox.
