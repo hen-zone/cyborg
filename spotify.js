@@ -71,11 +71,8 @@ export async function cutPipe(req) {
     const newestTracks = ordered.slice(0, 150);
     const oldestTracks = ordered.slice(150);
 
-    // order by decreasing time.
 
-    // pipeDream is a list of URIs.
-    // we should select all undispensed tracks from the DB, then get random entries, then map them to their URIs.
-    let HALF_SIZE = 30;
+    let HALF_SIZE = 15;
 
     const newPlaylistRows = newestTracks.length > HALF_SIZE
         ? getRandomItems(newestTracks, HALF_SIZE)
