@@ -71,7 +71,6 @@ export async function cutPipe(req) {
     const newestTracks = ordered.slice(0, 150);
     const oldestTracks = ordered.slice(150);
 
-
     let HALF_SIZE = 15;
 
     const newPlaylistRows = newestTracks.length > HALF_SIZE
@@ -131,9 +130,7 @@ async function makeSpotifyClient(req) {
     return spotifyApi;
 }
 
-const HISTORY_PLAYLIST = '0ly7f5t0ylwWIiW1wAtvHc';
 const INBOX_PLAYLIST = '7LbKQZYipf8CfqH2eWoz5Q';
-const PIPE_DREAM_PLAYLIST = '08vL7ksqd4ovzUb7AAcJi9';
 const limit = 100;
 
 async function getPagedPlaylist(spotifyApi, userId, playlistId) {
@@ -148,7 +145,7 @@ async function getPagedPlaylist(spotifyApi, userId, playlistId) {
 }
 
 async function getSinglePlaylistPage(spotifyApi, userId, playlistId, offset = 0) {
-    console.log(`loading playlist ${userId}/${playlistId} at #${offset}`);
+    // console.log(`loading playlist ${userId}/${playlistId} at #${offset}`);
     const rawPage = await spotifyApi.getPlaylistTracks(userId, playlistId, {
         fields: 'total,items(track(uri))',
         offset,
@@ -251,6 +248,8 @@ export async function scanInboxes(req) {
         ),
     ]);
 
+    console.log('Loaded all new-track sources');
+
     const allHistoryURIs = (await getSpotifyTable().select('uri')).map(it => it.uri);
 
     const historySet = new Set(allHistoryURIs);
@@ -262,20 +261,39 @@ export async function scanInboxes(req) {
     if (newTracks.length) {
         await addTracks(newTracks, { dispensed: false });
     }
-
+    console.log('About to delete imported tracks from the inbox');
     // delete tracks from inbox.
     await inParallelBatches(70, myInboxTracks, async subset => {
         const tracks = subset.map(uri => ({ uri }));
         await spotifyApi.removeTracksFromPlaylist(HEN_SPOTIFY, INBOX_PLAYLIST, tracks);
     });
 
+    console.log('Done deleting imported tracks from the inbox');
+
+    console.log('About to process all fave-sources');
     let totalFavesFound = 0;
     await Promise.all(
         favePlaylistSpecs.map(async spec => {
             const [playlistName, userName, playlistId] = spec;
+            console.log(`Processing fave-source ${playlistName}`);
             const tracks = await getPagedPlaylist(spotifyApi, userName, playlistId);
+            console.log(`Fully loaded playlist ${playlistName}. There weree ${tracks.length} tracks.`);
             if (tracks.length) {
-                await spotifyApi.addToMySavedTracks(tracks.map(it => it.split(':').reverse()[0]));
+                console.log(`About to add to saved tracks from playlist ${playlistName}`);
+
+                await inParallelBatches(50, tracks, async subset => {
+                    const subsetTrackIds = subset.map(it => it.split(':').reverse()[0]);
+                    // console.log('subsetTrackIds', subsetTrackIds);
+                    console.log(`Saving ${subset.length} tracks from ${playlistName}`);
+                    await spotifyApi.addToMySavedTracks(
+                        subsetTrackIds
+                    );
+                    console.log(`Done saving ${subset.length} tracks from ${playlistName}`);
+                });
+
+                console.log(`Done adding saved tracks from playlist ${playlistName}`);
+
+                console.log(`About to clear  ${playlistName}`);
 
                 await inParallelBatches(70, tracks, async subset => {
                     await spotifyApi.removeTracksFromPlaylist(
@@ -284,11 +302,16 @@ export async function scanInboxes(req) {
                         subset.map(uri => ({ uri }))
                     );
                 });
+
+                console.log(`Done clearing ${playlistName}`);
             }
+            console.log(`Done processing fave-source ${playlistName}`);
 
             totalFavesFound += tracks.length;
         })
     );
+
+    console.log('Done processing all fave-sources;');
 
     // TODO: save the faves as already-dispensed tracks in the history
     // TODO: and, if they are already in history, update them to be marked as dispensed
