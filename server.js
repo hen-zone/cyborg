@@ -161,7 +161,8 @@ expressApp.get('/set-weight-for-date', async (req, res) => {
     console.log('START: handling set-weight-for-date');
     try {
         const { weight, date } = req.query;
-        res.json({ success: await handleSetWeightForDate(weight, date) });
+        let result = await handleSetWeightForDate(weight, date);
+        res.json({ success: true, weight: result.weight, messages: result.messages });
     } catch (reason) {
         res.json({ error: String(reason) });
         console.error(reason.stack);

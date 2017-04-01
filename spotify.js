@@ -83,8 +83,6 @@ export async function cutPipe(req) {
 
     const playlistRows = shuffled(newPlaylistRows.concat(oldPlaylistRows));
 
-    // TODO: mix them together
-
     const playlistURIs = playlistRows.map(it => it.uri);
 
     const numRemaining = pipeDream.length - playlistURIs.length;
@@ -117,15 +115,25 @@ async function saveRefreshCode(value) {
     return await MemCache.set('spotify-refresh-code', value);
 }
 
-async function makeSpotifyClient(req) {
-    const spotifyApi = new SpotifyWebApi({
+let rawSpotifyClient = function (req) {
+    return new SpotifyWebApi({
         clientId: SPOTIFY_CLIENT_ID,
         clientSecret: SPOTIFY_CLIENT_SECRET,
         redirectUri: makeSpotifyRedirectUri(req),
     });
+};
 
-    spotifyApi.setRefreshToken(await MemCache.get('spotify-refresh-code'));
+async function makeSpotifyClient(req) {
+    console.log("Instantiating SpotifyWebApi");
+    const spotifyApi = rawSpotifyClient(req);
+    console.log("Loading refresh token from memcache");
+    let refreshToken = await MemCache.get('spotify-refresh-code');
+    console.log("Setting refresh token " + refreshToken);
+
+    spotifyApi.setRefreshToken(refreshToken);
+    console.log('Refreshing access token');
     const refreshAccessTokenResult = await spotifyApi.refreshAccessToken();
+    console.log("Setting access token");
     spotifyApi.setAccessToken(refreshAccessTokenResult.body.access_token);
     return spotifyApi;
 }
@@ -187,14 +195,21 @@ function getRandomItems(arr, n) {
 }
 
 export async function receiveSpotifyCreds(req) {
-    const preAuthSpotifyApi = await makeSpotifyClient(req);
+    console.log('making spotify client');
+    const preAuthSpotifyApi = await rawSpotifyClient(req);
 
+    console.log("Trading auth code for tokens");
     const granted = await preAuthSpotifyApi.authorizationCodeGrant(req.query.code);
+
+    console.log("Tokens acquired");
 
     saveAccessCode(granted.body['access_token']);
     saveRefreshCode(granted.body['refresh_token']);
 
+    console.log('creating authed client');
     const authedSpotifyApi = await makeSpotifyClient(req);
+
+    console.log('Requesting saved tracks from authed client');
 
     return await authedSpotifyApi.getMySavedTracks({ limit: 1 });
 }
@@ -234,16 +249,20 @@ export async function scanInboxes(req) {
 
     await Promise.all([
         (async () => {
+            console.log("loading inbox...");
             const tracks = await getPagedPlaylist(spotifyApi, HEN_SPOTIFY, INBOX_PLAYLIST);
             tracks.forEach(it => allInboxTrackSet.add(it));
             myInboxTracks.push(...tracks);
+            console.log("...inbox loaded");
         })(),
 
         Promise.all(
             inboxPlaylistSpecs.map(async spec => {
                 const [nickname, user, id] = spec;
+                console.log('Loading playlist ' +  nickname);
                 const tracks = await getPagedPlaylist(spotifyApi, user, id);
                 tracks.forEach(it => allInboxTrackSet.add(it));
+                console.log('Done loading ' +  nickname);
             })
         ),
     ]);
@@ -277,7 +296,9 @@ export async function scanInboxes(req) {
             const [playlistName, userName, playlistId] = spec;
             console.log(`Processing fave-source ${playlistName}`);
             const tracks = await getPagedPlaylist(spotifyApi, userName, playlistId);
-            console.log(`Fully loaded playlist ${playlistName}. There weree ${tracks.length} tracks.`);
+            console.log(
+                `Fully loaded playlist ${playlistName}. There weree ${tracks.length} tracks.`
+            );
             if (tracks.length) {
                 console.log(`About to add to saved tracks from playlist ${playlistName}`);
 
@@ -285,9 +306,7 @@ export async function scanInboxes(req) {
                     const subsetTrackIds = subset.map(it => it.split(':').reverse()[0]);
                     // console.log('subsetTrackIds', subsetTrackIds);
                     console.log(`Saving ${subset.length} tracks from ${playlistName}`);
-                    await spotifyApi.addToMySavedTracks(
-                        subsetTrackIds
-                    );
+                    await spotifyApi.addToMySavedTracks(subsetTrackIds);
                     console.log(`Done saving ${subset.length} tracks from ${playlistName}`);
                 });
 

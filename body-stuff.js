@@ -24,14 +24,14 @@ export async function handleSetWeightForDate(weight, date) {
     }
     console.log('Validated weight.');
 
-    const smoothedWeight = (await setSmoothedWeightForDate(date, weightNum));
+    const {smoothedWeight, messages} = (await setSmoothedWeightForDate(date, weightNum));
     console.log('Done setting weight in MFP.');
 
     await incrementBeeminderGoal('weigh', true);
     console.log('Done applying beeminder increment.');
 
     console.log('END: handleSetWeightForDate');
-    return smoothedWeight.toFixed(1);
+    return {weight: smoothedWeight.toFixed(1), messages};
 }
 
 

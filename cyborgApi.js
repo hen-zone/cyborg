@@ -1,23 +1,22 @@
-import createSession from "./mfp/createSession";
-import * as api from "./mfp/higherLevelApi";
-import {alterDate} from "./mfp/util";
+import createSession from './mfp/createSession';
+import * as api from './mfp/higherLevelApi';
+import { alterDate } from './mfp/util';
 import * as ifttt from './iftttNotificationsApi';
-import {incrementBeeminderGoal} from './beeminderApi';
-
+import { incrementBeeminderGoal } from './beeminderApi';
+import WEIGHT_MESSAGES from './weightMessages';
 
 const EXERCISE_TYPES = {
     APPLE_WATCH: {
         name: 'Apple Watch Activity',
         templateDate: '2016-08-15',
-        id: 65259518
+        id: 65259518,
     },
     ROLLOVER: {
         name: 'Rollover',
         templateDate: '2016-06-01',
-        id: 65848663
-    }
+        id: 65848663,
+    },
 };
-
 
 async function parallelForEach(list, proc) {
     const promises = list.map(proc);
@@ -29,19 +28,21 @@ async function parallelForEach(list, proc) {
 async function setExerciseOfTypeForDate(session, type, date, calories) {
     const page = await api.exercisePageForDay(session, date);
     const existingInstances = await api.exercisesForNameFromPage(page, type.name);
-    const totalExisting = existingInstances.reduce((cum, instance)=> cum + instance.calories, 0);
+    const totalExisting = existingInstances.reduce((cum, instance) => cum + instance.calories, 0);
 
     console.log(`day ${date} has ${totalExisting}cal of ${type.name}`);
 
     if (totalExisting < calories) {
         api.createExerciseById(session, date, type.id, calories - totalExisting);
     } else if (totalExisting > calories) {
-        await Promise.all(existingInstances.map(
-            async instance => await api.deleteExerciseByIdAndDate(session, instance.id, date)
-        ));
+        await Promise.all(
+            existingInstances.map(
+                async instance => await api.deleteExerciseByIdAndDate(session, instance.id, date)
+            )
+        );
         await api.createExerciseById(session, date, type.id, calories);
     } else {
-        console.log("Nothing to do — amount is aready correct");
+        console.log('Nothing to do — amount is aready correct');
     }
 }
 
@@ -51,8 +52,8 @@ async function makeButtfractalSession() {
 
 export async function setBonusesForDays(dayBonusPairs) {
     const session = await makeButtfractalSession();
-    await parallelForEach(dayBonusPairs, async([date, bonus]) => {
-        await setExerciseOfTypeForDate(session, EXERCISE_TYPES.APPLE_WATCH, date, bonus)
+    await parallelForEach(dayBonusPairs, async ([date, bonus]) => {
+        await setExerciseOfTypeForDate(session, EXERCISE_TYPES.APPLE_WATCH, date, bonus);
     });
 
     if (dayBonusPairs.length === 3) {
@@ -71,7 +72,7 @@ export async function setBonusesForDays(dayBonusPairs) {
 export async function applyRolloverForDate(date) {
     const session = await makeButtfractalSession();
     const remaining = await api.remainingCaloriesForDay(session, date);
-    let rollover = remaining < 0 ? 0 : (10 * ((remaining / 10) | 0));
+    let rollover = remaining < 0 ? 0 : 10 * (remaining / 10 | 0);
     const nextDay = alterDate(date, 1);
     await setExerciseOfTypeForDate(session, EXERCISE_TYPES.ROLLOVER, nextDay, rollover);
     await incrementBeeminderGoal('food-diary');
@@ -86,11 +87,9 @@ function smoothWeight(previousWeight, newWeight) {
 
     const smoothedDiff = (1 - SMOOTHING_CONSTANT) * rawDiff;
 
-    const needsBiasing = (Math.abs(rawDiff) >= EPSILON) && (Math.abs(smoothedDiff) < EPSILON);
+    const needsBiasing = Math.abs(rawDiff) >= EPSILON && Math.abs(smoothedDiff) < EPSILON;
 
-    const correctedDiff = needsBiasing ?
-    EPSILON * Math.sign(rawDiff)
-        : smoothedDiff;
+    const correctedDiff = needsBiasing ? EPSILON * Math.sign(rawDiff) : smoothedDiff;
 
     const roundedToEpsilon = Math.round((previousWeight + correctedDiff) / EPSILON) * EPSILON;
     // In pathological cases (eg 111.3), floating-point artefacts appear unless we explicitly cap the digits here.
@@ -110,27 +109,27 @@ export async function setSmoothedWeightForDate(date, weight) {
     console.log(`Calculated smooth weight (${smoothedWeight}).`);
     await api.setWeightForDate(session, date, smoothedWeight);
     console.log('Done setting weight in MFP.');
-    await sendMessagesForWeightChange(mostRecentWeight, smoothedWeight);
+    const messages = await sendMessagesForWeightChange(mostRecentWeight, smoothedWeight);
     console.log('Done sending weight change messages.');
 
     console.log('END: setSmoothedWeightForDate');
-    return smoothedWeight;
+    return {smoothedWeight, messages};
 }
-
-import WEIGHT_MESSAGES from './weightMessages';
 
 export async function sendMessagesForWeightChange(oldWeight, newWeight) {
     console.log('START: sendMessagesForWeightChange');
     const diff = oldWeight - newWeight;
-    const basicResult = diff > 0 ?
-        (`⚖️ Lost ${diff.toFixed(1)}, down to ${newWeight.toFixed(1)}!\n`)
-        : '';
+    const totalLost = 116.4 - newWeight;
+    const basicMessage = totalLost > 0
+        ? `✨ Lost ${totalLost.toFixed(1)}kg.`
+        : `✨ Almost there — ${(-totalLost).toFixed(1)}kg to start!`;
     console.log('Done creating base message.');
     const matchingMessages = WEIGHT_MESSAGES.filter(it => it[0] < oldWeight && it[0] >= newWeight);
-    const joinedMessages = [basicResult].concat(matchingMessages.map(it => '✨' + it[1])).join('\n');
-    console.log('Done composing special-case weight messages.');
+    const joinedMessages = matchingMessages.map(it => '✨' + it[1]).join('\n');
+    const finalMessages = joinedMessages || basicMessage;
+    console.log('Done creating final message:\n' + finalMessages);
     let result = await ifttt.sendNotification(joinedMessages);
-    console.log(`Send IFTTT notification (${joinedMessages}).`);
+    console.log(`Send IFTTT notification (${finalMessages}).`);
     console.log('END: sendMessagesForWeightChange');
-    return result;
+    return finalMessages;
 }
