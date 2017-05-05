@@ -2,6 +2,8 @@ import SpotifyWebApi from 'spotify-web-api-node';
 import * as MemCache from './memcached';
 import Knex from 'knex';
 
+import hardCodedHistoryURIs from "./spotify-ancient-history.json"
+
 const SPOTIFY_CLIENT_ID = 'fb91152cd5fd475d9878399c2cb0c6cb';
 const SPOTIFY_CLIENT_SECRET = '5b3e94fa7a6e473b86015bdd9320595d';
 
@@ -13,8 +15,19 @@ const dbClient = Knex({
     connection: process.env.DATABASE_URL + '?ssl=true',
 });
 
+
+
 const SPOTIFY_TABLE = 'SpotifyTracks';
 const getSpotifyTable = () => dbClient(SPOTIFY_TABLE);
+
+(async () => {
+    try {
+        const dispensed = await getSpotifyTable().whereBetween("added", [1493959435475, 14939594354750]).delete();    
+        console.log('dispensed.length', dispensed.length);
+    } catch(it) {
+        console.error(it);
+    }    
+})();
 
 async function createTableSpotifyTracks(dbClient) {
     // Can't run this every time bc the index clause makes it fail ;__;
@@ -32,10 +45,6 @@ export const SPOTIFY_RECEIVE_CREDS_PATH = '/spotify/receive-creds';
 export function makeSpotifyRedirectUri(req) {
     const port = req.get('port');
     return `${req.protocol}://${req.get('host')}${port ? ':' + port : ''}${SPOTIFY_RECEIVE_CREDS_PATH}`;
-}
-
-export async function getSpotifyHistory() {
-    return await getSpotifyTable().select();
 }
 
 async function incrementPipeNumber() {
@@ -285,9 +294,9 @@ export async function scanInboxes(req) {
 
     console.log('Loaded all new-track sources');
 
-    const allHistoryURIs = (await getSpotifyTable().select('uri')).map(it => it.uri);
+    const historyURIsFromDB = (await getSpotifyTable().select('uri')).map(it => it.uri);
 
-    const historySet = new Set(allHistoryURIs);
+    const historySet = new Set([...historyURIsFromDB, ...hardCodedHistoryURIs]);
     const newTracks = Array.from(allInboxTrackSet).filter(it => !historySet.has(it));
 
     // There is a race condition here, but it will fail atomically. if one of these tracks
