@@ -107,6 +107,16 @@ export async function cutPipe(req) {
     };
 }
 
+async function asyncTry(block, handler) {
+    let result;
+    try {
+        result = await block();
+    } catch(it) {
+        result = await handler(it);
+    }
+    return result;
+}
+
 async function saveAccessCode(value) {
     return await MemCache.set('spotify-access-code', value);
 }
@@ -225,7 +235,7 @@ export async function scanInboxes(req) {
 
     const inboxPlaylistSpecs = [
         ['henDiscover', 'spotify', '37i9dQZEVXcORpwpJL9ceh'],
-        ['henReleaseRadar', 'spotify', '37i9dQZEVXbbXNiJeLtLv3'],
+        ['henReleaseRadar', 'spotify', '37i9dQZEVXbnh6TOylu0xX'],
         ['djoDiscover', 'spotify', '37i9dQZEVXcNPxeqxshEf9'],
         ['desmondDiscover', 'spotify', '37i9dQZEVXcISf3FIRhvUD'],
         ['pitchforkOfficialTracks', 'pitchfork', '7q503YgioHAbo1iOIa67M8'],
@@ -260,7 +270,13 @@ export async function scanInboxes(req) {
             inboxPlaylistSpecs.map(async spec => {
                 const [nickname, user, id] = spec;
                 console.log('Loading playlist ' +  nickname);
-                const tracks = await getPagedPlaylist(spotifyApi, user, id);
+                const tracks = await asyncTry(
+                    () => getPagedPlaylist(spotifyApi, user, id),
+                    error => {
+                        console.error('Got error loading playlist ' + nickname);
+                        throw error;
+                    }
+                );
                 tracks.forEach(it => allInboxTrackSet.add(it));
                 console.log('Done loading ' +  nickname);
             })
