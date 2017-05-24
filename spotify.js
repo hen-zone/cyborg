@@ -20,14 +20,6 @@ const dbClient = Knex({
 const SPOTIFY_TABLE = 'SpotifyTracks';
 const getSpotifyTable = () => dbClient(SPOTIFY_TABLE);
 
-(async () => {
-    try {
-        const dispensed = await getSpotifyTable().whereBetween("added", [1493959435475, 14939594354750]).delete();    
-        console.log('dispensed.length', dispensed.length);
-    } catch(it) {
-        console.error(it);
-    }    
-})();
 
 async function createTableSpotifyTracks(dbClient) {
     // Can't run this every time bc the index clause makes it fail ;__;
