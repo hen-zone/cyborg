@@ -242,6 +242,7 @@ export async function scanInboxes(req) {
         ['pitchforkOfficialTracks', 'pitchfork', '7q503YgioHAbo1iOIa67M8'],
         ['pitchforkUnofficialAlbums', 'kenove', '6QdRN6dPnook9KPezrggaO'],
         ['jjjHitList', 'triple.j.abc', '7vFQNWXoblEJXpbnTuyz76'],
+        ['needleDropTracks', 'szymonczarnowski', '1h9vpwvGP5Pr2qvAzNCjOK'],
         // ['livvyDiscover', 'spotify', '37i9dQZEVXcJP0NgDg2X0T'],
         // ['pitchforkUnofficialTracks', 'szymonczarnowski', '2LkZTDKWPelJv7HNY9rQV7'],
         // ['izaakDiscover', 'spotify', '37i9dQZEVXcDc5DQak61yg'],
