@@ -69,20 +69,21 @@ export async function cutPipe(req) {
 
     const ordered = orderByString(pipeDream, it => it.added).reverse();
 
-    const newestTracks = ordered.slice(0, 150);
-    const oldestTracks = ordered.slice(150);
+    const newestTracks = ordered.slice(0, 300);
+    const olderTracks = ordered.slice(300);
 
-    let HALF_SIZE = 15;
+    const olderMidPoint = Math.floor(olderTracks.length / 2);
 
-    const newPlaylistRows = newestTracks.length > HALF_SIZE
-        ? getRandomItems(newestTracks, HALF_SIZE)
-        : newestTracks;
+    const mediumTracks = olderTracks.slice(0, olderMidPoint);
+    const oldestTracks = olderTracks.slice(olderMidPoint);
 
-    const oldPlaylistRows = oldestTracks.length > HALF_SIZE
-        ? getRandomItems(oldestTracks, HALF_SIZE)
-        : oldestTracks;
+    let THIRD_SIZE = 10;
 
-    const playlistRows = shuffled(newPlaylistRows.concat(oldPlaylistRows));
+    const newPlaylistRows = getRandomItems(newestTracks, THIRD_SIZE);
+    const mediumPlaylistRows = getRandomItems(mediumTracks, THIRD_SIZE);
+    const oldPlaylistRows = getRandomItems(oldestTracks, THIRD_SIZE);
+
+    const playlistRows = shuffled(newPlaylistRows.concat(oldPlaylistRows).concat(mediumPlaylistRows));
 
     const playlistURIs = playlistRows.map(it => it.uri);
 
@@ -195,6 +196,7 @@ function randomIntBetweenInclusive(first, last) {
 }
 
 function getRandomItems(arr, n) {
+    if (arr.length <= n) return arr.slice();
     var result = new Array(n), len = arr.length, taken = new Array(len);
     if (n > len) throw new RangeError('getRandom: more elements taken than available');
     while (n--) {
