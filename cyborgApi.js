@@ -119,7 +119,7 @@ export async function setSmoothedWeightForDate(date, weight) {
 export async function sendMessagesForWeightChange(oldWeight, newWeight) {
     console.log('START: sendMessagesForWeightChange');
     const diff = oldWeight - newWeight;
-    const totalLost = 116.4 - newWeight;
+    const totalLost = 124.4 - newWeight;
     const basicMessage = totalLost > 0
         ? `✨ Lost ${totalLost.toFixed(1)}kg.`
         : `✨ Almost there — ${(-totalLost).toFixed(1)}kg to start!`;
