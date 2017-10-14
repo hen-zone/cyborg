@@ -24,10 +24,12 @@
     "knex": "^0.12.7",
     "memjs": "^0.10.0",
     "mjs": "^1.0.0",
+    "node-osascript": "^2.0.0",
     "pg": "^6.1.4",
     "prettier": "^0.22.0",
     "request": "^2.74.0",
     "request-promise": "^4.1.1",
+    "spotify-node-applescript": "^1.1.0",
     "spotify-web-api-node": "^2.3.6"
   },
   "engines": {

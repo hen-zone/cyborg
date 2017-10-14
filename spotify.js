@@ -2,6 +2,10 @@ import SpotifyWebApi from 'spotify-web-api-node';
 import * as MemCache from './memcached';
 import Knex from 'knex';
 
+function getTrackInfo() {
+    const client = new SpotifyWebApi();
+}
+
 import hardCodedHistoryURIs from "./spotify-ancient-history.json"
 
 const SPOTIFY_CLIENT_ID = 'fb91152cd5fd475d9878399c2cb0c6cb';
@@ -135,7 +139,7 @@ let rawSpotifyClient = function (req) {
     });
 };
 
-async function makeSpotifyClient(req) {
+export async function makeSpotifyClient(req) {
     console.log("Instantiating SpotifyWebApi");
     const spotifyApi = rawSpotifyClient(req);
     console.log("Loading refresh token from memcache");
@@ -153,7 +157,7 @@ async function makeSpotifyClient(req) {
 const INBOX_PLAYLIST = '7LbKQZYipf8CfqH2eWoz5Q';
 const limit = 100;
 
-async function getPagedPlaylist(spotifyApi, userId, playlistId) {
+export async function getPagedPlaylist(spotifyApi, userId, playlistId) {
     const firstPage = await getSinglePlaylistPage(spotifyApi, userId, playlistId, 0);
     const numPages = Math.ceil(firstPage.total / 100);
     const pagePromises = [Promise.resolve(firstPage)];
@@ -162,6 +166,17 @@ async function getPagedPlaylist(spotifyApi, userId, playlistId) {
     }
     const resolvedPages = await Promise.all(pagePromises);
     return [].concat.apply([], resolvedPages.map(it => it.uris));
+}
+
+export async function getPagedPlaylistWithTrackInfo(spotifyApi, userId, playlistId) {
+    const firstPage = await getSinglePlaylistPageWithTrackInfo(spotifyApi, userId, playlistId, 0);
+    const numPages = Math.ceil(firstPage.total / 100);
+    const pagePromises = [Promise.resolve(firstPage)];
+    for (let i = 1; i < numPages; ++i) {
+        pagePromises.push(getSinglePlaylistPageWithTrackInfo(spotifyApi, userId, playlistId, i * 100));
+    }
+    const resolvedPages = await Promise.all(pagePromises);
+    return [].concat.apply([], resolvedPages.map(it => it.tracks));
 }
 
 async function getSinglePlaylistPage(spotifyApi, userId, playlistId, offset = 0) {
@@ -178,6 +193,22 @@ async function getSinglePlaylistPage(spotifyApi, userId, playlistId, offset = 0)
         .map(it => it.track.uri)
         .filter(uri => uri !== 'spotify:track:null');
     return { total, uris };
+}
+
+async function getSinglePlaylistPageWithTrackInfo(spotifyApi, userId, playlistId, offset = 0) {
+    // console.log(`loading playlist ${userId}/${playlistId} at #${offset}`);
+    const rawPage = await spotifyApi.getPlaylistTracks(userId, playlistId, {
+        fields: 'total,items(track(uri,duration_ms,name,artists))',
+        offset,
+        limit,
+    });
+    let nextOffset = offset + limit;
+    let total = rawPage.body.total;
+    const moreNeeded = nextOffset < total;
+    const tracks = rawPage.body.items
+        .map(it => it.track)
+        .filter(it => it.uri !== 'spotify:track:null');
+    return { total, tracks };
 }
 
 async function inParallelBatches(limit, list, asyncProcess) {

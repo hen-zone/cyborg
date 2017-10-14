@@ -13,6 +13,7 @@ import {
     makeSpotifyRedirectUri,
 } from './spotify';
 import { handleSetWeightForDate, parseTweet } from './body-stuff';
+import {testRipping} from "./autoripper";
 
 const authCode = 'AQAfl5Y9hHEpLqo0ZDFFneWIBp95aNR3QToCowaPWgRLTCfiI7pQUPKEWBCeEDr9HpGj6ZXSUVKfB0XeMwdqaFEpafo4wFe8omDHDa240beHDr7t-c_oENDVXNbyLhFVk52hSEyL5mJI8K9FdHy1N-ijQxpRI7tALiWgf1LaK57oHklRNl8il2sFnwxQeGTfrSHkhJ1EFpgfK5TpYQBKDe7D4Not6C5kBbVoIAKPoo8v_VPkwY42r5-Ai3HXLXccyC5e3GDuDkSpQGSxa3Je9MG25HkxI1UtWmGzJYI4qxUhXABh';
 
@@ -39,6 +40,18 @@ expressApp.get('/', async (req, res) => {
 
 expressApp.get('/favicon', async (req, res) => {
     res.json('Nothing here lol');
+});
+
+
+expressApp.get('/spotify/auto-rip', async (req, res) => {
+    try {
+        await testRipping(req);
+        res.json({success: true});
+    } catch (reason) {
+        res.json({ error: reason });
+        console.error(reason.stack);
+    }
+    res.end();
 });
 
 expressApp.get('/spotify/login', async (req, res) => {
