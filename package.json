@@ -31,8 +31,5 @@
     "request-promise": "^4.1.1",
     "spotify-node-applescript": "^1.1.0",
     "spotify-web-api-node": "^2.3.6"
-  },
-  "engines": {
-    "node": "5.5.0"
   }
 }
