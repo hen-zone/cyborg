@@ -21,6 +21,8 @@
     "babel-register": "^6.11.6",
     "body-parser": "^1.15.2",
     "express": "^4.14.0",
+    "firebase": "^4.6.2",
+    "firebase-tools": "^3.15.3",
     "knex": "^0.12.7",
     "memjs": "^0.10.0",
     "mjs": "^1.0.0",
