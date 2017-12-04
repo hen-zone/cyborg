@@ -79,7 +79,8 @@ function asyncRename(fromPath, toPath) {
     })
 }
 
-const RIP_DIR = '/Users/buttfractal/Music/Audio\ Hijack';
+const STAGING_DIR = '/Users/buttfractal/Music/Audio\ Hijack';
+const RIP_DIR = '/Users/buttfractal/Documents/synced-music/rips';
 
 export async function ripPlaylist(req, userId, playlistId) {
     const client = await makeSpotifyClient(req);
@@ -92,6 +93,8 @@ export async function ripPlaylist(req, userId, playlistId) {
 
     // TODO: filter the songs to those that are unripped FIRST, then display the time remaining in minutes
     // after each track is ripped
+
+
 
     const tracksToRip = [];
 
@@ -123,6 +126,8 @@ export async function ripPlaylist(req, userId, playlistId) {
     let i = 0;
     while (i < tracksToRip.length) {
         try {
+            // TODO: clear the staging directory completely before each rip
+
             let ONE_HOUR = (60 * 60 * 1000);
             const hoursRemaining = durationRemaining / ONE_HOUR | 0;
             const minutesRemaining = (durationRemaining % ONE_HOUR) / (60 * 1000) | 0;
@@ -138,12 +143,12 @@ export async function ripPlaylist(req, userId, playlistId) {
             await asyncPlayTrack(track.uri);
             await sleep(duration);
             await asyncOsascriptExecute(stopRecording);
-            const rippedDirContents = await asyncReadDir('/Users/buttfractal/Music/Audio\ Hijack');
+            const rippedDirContents = await asyncReadDir(STAGING_DIR);
             const rippedTracks = rippedDirContents.filter(it => it.startsWith('ripped-'));
             const lastRipped = rippedTracks[rippedTracks.length - 1];
 
             if (lastRipped) {
-                await asyncRename(`${RIP_DIR}/${lastRipped}`, desiredPath)
+                await asyncRename(`${STAGING_DIR}/${lastRipped}`, desiredPath)
             }
 
             ++i;
