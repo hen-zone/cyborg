@@ -323,7 +323,7 @@ export async function scanInboxes(req) {
 
     const historyURIsFromDB = (await getSpotifyTable().select('uri')).map(it => it.uri);
 
-    const historySet = new Set([...historyURIsFromDB, ...hardCodedHistoryURIs]);
+    const historySet = new Set([...historyURIsFromDB, ...hardCodedHistoryURIs.map(it => it.uri)]);
     const newTracks = Array.from(allInboxTrackSet).filter(it => !historySet.has(it));
 
     // There is a race condition here, but it will fail atomically. if one of these tracks
