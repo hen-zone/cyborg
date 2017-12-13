@@ -271,10 +271,10 @@ export async function scanInboxes(req) {
         ['henDiscover', 'spotify', '37i9dQZEVXcORpwpJL9ceh'],
         ['henReleaseRadar', 'spotify', '37i9dQZEVXbnh6TOylu0xX'],
         ['djoDiscover', 'spotify', '37i9dQZEVXcNPxeqxshEf9'],
-        ['desmondDiscover', 'spotify', '37i9dQZEVXcISf3FIRhvUD'],
+        // ['desmondDiscover', 'spotify', '37i9dQZEVXcISf3FIRhvUD'],
         ['pitchforkOfficialTracks', 'pitchfork', '7q503YgioHAbo1iOIa67M8'],
         ['pitchforkUnofficialAlbums', 'kenove', '6QdRN6dPnook9KPezrggaO'],
-        ['jjjHitList', 'triple.j.abc', '7vFQNWXoblEJXpbnTuyz76'],
+        // ['jjjHitList', 'triple.j.abc', '7vFQNWXoblEJXpbnTuyz76'],
         ['needleDropTracks', 'szymonczarnowski', '1h9vpwvGP5Pr2qvAzNCjOK'],
         ['rtrSoundAlternative', 'rtrfm92.1', '0uHa4xTycG89LOehnKIgyS'],
         // ['livvyDiscover', 'spotify', '37i9dQZEVXcJP0NgDg2X0T'],
@@ -323,7 +323,7 @@ export async function scanInboxes(req) {
 
     const historyURIsFromDB = (await getSpotifyTable().select('uri')).map(it => it.uri);
 
-    const historySet = new Set([...historyURIsFromDB, ...hardCodedHistoryURIs]);
+    const historySet = new Set([...historyURIsFromDB, ...hardCodedHistoryURIs.map(it => it.uri)]);
     const newTracks = Array.from(allInboxTrackSet).filter(it => !historySet.has(it));
 
     // There is a race condition here, but it will fail atomically. if one of these tracks
