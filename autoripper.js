@@ -1,14 +1,18 @@
 import spotifyApp from 'spotify-node-applescript'
 import osascript from 'node-osascript';
-import {getPagedPlaylistWithTrackInfo, makeSpotifyClient} from "./spotify";
+import { getPagedPlaylistWithTrackInfo, makeSpotifyClient } from "./spotify";
 import fs from 'fs';
+import { promisifyAll } from 'bluebird';
 
-function fileExists(path){
+promisifyAll(spotifyApp);
+promisifyAll(fs);
+
+function fileExists(path) {
     return new Promise((ok, fail) => {
-        fs.stat(path, function(err, stat) {
-            if(! err) {
+        fs.stat(path, function (err, stat) {
+            if (!err) {
                 ok(true);
-            } else if(err.code === 'ENOENT') {
+            } else if (err.code === 'ENOENT') {
                 // file does not exist
                 ok(false);
             } else {
@@ -20,7 +24,7 @@ function fileExists(path){
 
 function asyncOsascriptExecute(script) {
     return new Promise((succeed, fail) => {
-        osascript.execute(script, function(err, result, raw){
+        osascript.execute(script, function (err, result, raw) {
             if (err) fail(err);
             else succeed(result);
         });
@@ -34,6 +38,18 @@ function asyncPlayTrack(uri) {
 }
 
 const startRecording = `
+tell app "Finder" to set allProcs to name of processes
+
+if allProcs contains "Spotify" then tell application "Spotify" to quit
+if allProcs contains "Audio Hijack" then tell application "Audio Hijack" to quit
+
+delay 2
+
+tell application "Spotify" to activate
+
+delay 2
+
+
 tell application "Audio Hijack"
 	activate
 	tell application "System Events"
@@ -45,12 +61,14 @@ end tell
 `;
 
 const stopRecording = `
+tell application "Spotify" to quit
 tell application "Audio Hijack"
 	activate
 	tell application "System Events"
 		keystroke "r" using {command down}
-		keystroke "q" using {command down}
-	end tell
+    end tell
+    delay 5
+    quit
 end tell
 `;
 
@@ -63,7 +81,7 @@ function sleep(time) {
 
 function asyncReadDir(path) {
     return new Promise((ok, fail) => {
-        fs.readdir(path, function(err, items) {
+        fs.readdir(path, function (err, items) {
             if (err) fail(err);
             else ok(items);
         });
@@ -72,15 +90,15 @@ function asyncReadDir(path) {
 
 function asyncRename(fromPath, toPath) {
     return new Promise((ok, fail) => {
-        fs.rename(fromPath, toPath, function(err) {
+        fs.rename(fromPath, toPath, function (err) {
             if (err) fail(err);
             else ok();
         });
     })
 }
 
-const STAGING_DIR = '/Users/buttfractal/Music/Audio\ Hijack';
-const RIP_DIR = '/Users/buttfractal/Documents/synced-music/rips';
+const STAGING_DIR = '/Users/hen/Music/Audio\ Hijack';
+const RIP_DIR = '/Users/hen/Documents/synced-music/rips';
 
 export async function ripPlaylist(req, userId, playlistId) {
     const client = await makeSpotifyClient(req);
@@ -106,15 +124,12 @@ export async function ripPlaylist(req, userId, playlistId) {
         const desiredFileName = `${artistName}_-_${trackName}.mp3`.replace(/[\/:]/g, '-');
         const desiredPath = `${RIP_DIR}/${desiredFileName}`;
 
-        if (track.duration_ms > 10 * 60 * 1000 - 1) {
-            console.log(`This track is over 10 minutes, and needs manual ripping: ${artistName} - ${trackName}`);
-            continue;
-        }
-
         if (!(await fileExists(desiredPath))) {
-            tracksToRip.push({...track, desiredPath})
+            tracksToRip.push({ ...track, desiredPath })
         }
     }
+
+    tracksToRip.sort((a, b) => a.duration_ms - b.duration_ms);
 
     console.log(`Skipping ${tracks.length - tracksToRip.length} already-ripped tracks`);
 
@@ -136,19 +151,28 @@ export async function ripPlaylist(req, userId, playlistId) {
             const duration = track.duration_ms;
             const desiredPath = track.desiredPath;
 
+            const oldFiles = await fs.readdirAsync(STAGING_DIR);
+            await Promise.all(oldFiles.map(it => fs.unlinkAsync(STAGING_DIR + '/' + it)));
+
             durationRemaining -= duration;
 
             console.log(`Now ripping to ${desiredPath}`);
+
+            // TODO: kill both Spotify and Audio Hijack if they are open
+
             await asyncOsascriptExecute(startRecording);
             await asyncPlayTrack(track.uri);
             await sleep(duration);
             await asyncOsascriptExecute(stopRecording);
             const rippedDirContents = await asyncReadDir(STAGING_DIR);
-            const rippedTracks = rippedDirContents.filter(it => it.startsWith('ripped-'));
-            const lastRipped = rippedTracks[rippedTracks.length - 1];
+            const lastRipped = rippedDirContents[rippedDirContents.length - 1];
 
             if (lastRipped) {
+                const oldName = `${STAGING_DIR}/${lastRipped}`;
+                console.log('Moving ' + oldName + ' to ' + desiredPath);
                 await asyncRename(`${STAGING_DIR}/${lastRipped}`, desiredPath)
+            } else {
+                console.log('After ripping, there was no file there? wtf... moving on')
             }
 
             ++i;
@@ -163,3 +187,7 @@ export async function ripPlaylist(req, userId, playlistId) {
 export async function testRipping(req) {
     return await ripPlaylist(req, '1232511708', '2Ug9uupzKMwvhRipGP5GNb');
 }
+
+export async function ripFromCommandLine() {
+    return await testRipping({ get() { return 'x' } });
+};
