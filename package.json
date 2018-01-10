@@ -6,7 +6,7 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "node index.js",
-    "heroku-local": "heroku config -s > .env && heroku local",
+    "heroku-local": "yarn heroku config -s > .env && yarn heroku local",
     "logs": "heroku logs --tail",
     "prettier": "prettier --print-width 100 --tab-width 4 --single-quote --jsx-bracket-same-line --trailing-comma es5 --write"
   },
@@ -23,6 +23,8 @@
     "body-parser": "^1.15.2",
     "express": "^4.14.0",
     "firebase-tools": "^3.15.4",
+    "heroku": "^0.2.0",
+    "heroku-cli": "^6.15.13",
     "knex": "^0.12.7",
     "memjs": "^0.10.0",
     "mjs": "^1.0.0",

@@ -1,51 +1,50 @@
-import SpotifyWebApi from 'spotify-web-api-node';
-import * as MemCache from './memcached';
-import Knex from 'knex';
+import SpotifyWebApi from "spotify-web-api-node";
+import * as MemCache from "./memcached";
+import Knex from "knex";
 
 function getTrackInfo() {
     const client = new SpotifyWebApi();
 }
 
-import hardCodedHistoryURIs from "./spotify-ancient-history.json"
+import hardCodedHistoryURIs from "./spotify-ancient-history.json";
 
-const SPOTIFY_CLIENT_ID = 'fb91152cd5fd475d9878399c2cb0c6cb';
-const SPOTIFY_CLIENT_SECRET = '5b3e94fa7a6e473b86015bdd9320595d';
+const SPOTIFY_CLIENT_ID = "fb91152cd5fd475d9878399c2cb0c6cb";
+const SPOTIFY_CLIENT_SECRET = "5b3e94fa7a6e473b86015bdd9320595d";
 
-const HEN_SPOTIFY = '1232511708';
+const HEN_SPOTIFY = "1232511708";
 
 //noinspection JSUnresolvedVariable
 const dbClient = Knex({
-    client: 'pg',
-    connection: process.env.DATABASE_URL + '?ssl=true',
+    client: "pg",
+    connection: process.env.DATABASE_URL + "?ssl=true"
 });
 
-
-
-const SPOTIFY_TABLE = 'SpotifyTracks';
+const SPOTIFY_TABLE = "SpotifyTracks";
 const getSpotifyTable = () => dbClient(SPOTIFY_TABLE);
-
 
 async function createTableSpotifyTracks(dbClient) {
     // Can't run this every time bc the index clause makes it fail ;__;
-    console.log('about to create table...');
+    console.log("about to create table...");
     await dbClient.schema.createTableIfNotExists(SPOTIFY_TABLE, table => {
         table.increments();
-        table.string('uri').index().unique();
-        table.bool('dispensed').notNullable().defaultTo(false);
+        table.string("uri").index().unique();
+        table.bool("dispensed").notNullable().defaultTo(false);
     });
-    console.log('Created table!');
+    console.log("Created table!");
 }
 
-export const SPOTIFY_RECEIVE_CREDS_PATH = '/spotify/receive-creds';
+export const SPOTIFY_RECEIVE_CREDS_PATH = "/spotify/receive-creds";
 
 export function makeSpotifyRedirectUri(req) {
-    const port = req.get('port');
-    return `${req.protocol}://${req.get('host')}${port ? ':' + port : ''}${SPOTIFY_RECEIVE_CREDS_PATH}`;
+    const port = req.get("port");
+    return `${req.protocol}://${req.get("host")}${port ? ":" + port : ""}${SPOTIFY_RECEIVE_CREDS_PATH}`;
 }
 
 async function incrementPipeNumber() {
-    const nextPipeNumber = Number((await MemCache.get('spotify-pipe-number')) || 0) + 1;
-    await MemCache.set('spotify-pipe-number', String(nextPipeNumber));
+    const nextPipeNumber = Number(
+        (await MemCache.get("spotify-pipe-number")) || 0
+    ) + 1;
+    await MemCache.set("spotify-pipe-number", String(nextPipeNumber));
     return nextPipeNumber;
 }
 
@@ -69,7 +68,9 @@ function shuffled(list) {
 export async function cutPipe(req) {
     const spotifyApi = await makeSpotifyClient(req);
 
-    const pipeDream = await getSpotifyTable().select('uri', 'added').where({ dispensed: false });
+    const pipeDream = await getSpotifyTable()
+        .select("uri", "added")
+        .where({ dispensed: false });
 
     const ordered = orderByString(pipeDream, it => it.added).reverse();
 
@@ -87,7 +88,9 @@ export async function cutPipe(req) {
     const mediumPlaylistRows = getRandomItems(mediumTracks, THIRD_SIZE);
     const oldPlaylistRows = getRandomItems(oldestTracks, THIRD_SIZE);
 
-    const playlistRows = shuffled(newPlaylistRows.concat(oldPlaylistRows).concat(mediumPlaylistRows));
+    const playlistRows = shuffled(
+        newPlaylistRows.concat(oldPlaylistRows).concat(mediumPlaylistRows)
+    );
 
     const playlistURIs = playlistRows.map(it => it.uri);
 
@@ -96,20 +99,26 @@ export async function cutPipe(req) {
     const nextPipeNumber = await incrementPipeNumber();
 
     let name = `Pyro Pack #${nextPipeNumber}`;
-    console.log('about to create playlist');
+    console.log("about to create playlist");
     const playlistInfo = await spotifyApi.createPlaylist(HEN_SPOTIFY, name);
-    console.log('created playlist');
+    console.log("created playlist");
     const newPlaylistId = playlistInfo.body.id;
     console.log(playlistURIs);
-    await spotifyApi.addTracksToPlaylist(HEN_SPOTIFY, newPlaylistId, playlistURIs);
-    await getSpotifyTable().whereIn('uri', playlistURIs).update({ dispensed: true });
+    await spotifyApi.addTracksToPlaylist(
+        HEN_SPOTIFY,
+        newPlaylistId,
+        playlistURIs
+    );
+    await getSpotifyTable()
+        .whereIn("uri", playlistURIs)
+        .update({ dispensed: true });
 
     return {
         name: name,
         numRemaining,
         id: newPlaylistId,
         uri: playlistInfo.body.uri,
-        tracks: playlistRows,
+        tracks: playlistRows
     };
 }
 
@@ -117,25 +126,25 @@ async function asyncTry(block, handler) {
     let result;
     try {
         result = await block();
-    } catch(it) {
+    } catch (it) {
         result = await handler(it);
     }
     return result;
 }
 
 async function saveAccessCode(value) {
-    return await MemCache.set('spotify-access-code', value);
+    return await MemCache.set("spotify-access-code", value);
 }
 
 async function saveRefreshCode(value) {
-    return await MemCache.set('spotify-refresh-code', value);
+    return await MemCache.set("spotify-refresh-code", value);
 }
 
-let rawSpotifyClient = function (req) {
+let rawSpotifyClient = function(req) {
     return new SpotifyWebApi({
         clientId: SPOTIFY_CLIENT_ID,
         clientSecret: SPOTIFY_CLIENT_SECRET,
-        redirectUri: makeSpotifyRedirectUri(req),
+        redirectUri: makeSpotifyRedirectUri(req)
     });
 };
 
@@ -143,71 +152,104 @@ export async function makeSpotifyClient(req) {
     console.log("Instantiating SpotifyWebApi");
     const spotifyApi = rawSpotifyClient(req);
     console.log("Loading refresh token from memcache");
-    let refreshToken = await MemCache.get('spotify-refresh-code');
+    let refreshToken = await MemCache.get("spotify-refresh-code");
     console.log("Setting refresh token " + refreshToken);
 
     spotifyApi.setRefreshToken(refreshToken);
-    console.log('Refreshing access token');
+    console.log("Refreshing access token");
     const refreshAccessTokenResult = await spotifyApi.refreshAccessToken();
     console.log("Setting access token");
     spotifyApi.setAccessToken(refreshAccessTokenResult.body.access_token);
     return spotifyApi;
 }
 
-const INBOX_PLAYLIST = '7LbKQZYipf8CfqH2eWoz5Q';
+const INBOX_PLAYLIST = "7LbKQZYipf8CfqH2eWoz5Q";
 const limit = 100;
 
 export async function getPagedPlaylist(spotifyApi, userId, playlistId) {
-    const firstPage = await getSinglePlaylistPage(spotifyApi, userId, playlistId, 0);
+    const firstPage = await getSinglePlaylistPage(
+        spotifyApi,
+        userId,
+        playlistId,
+        0
+    );
     const numPages = Math.ceil(firstPage.total / 100);
     const pagePromises = [Promise.resolve(firstPage)];
     for (let i = 1; i < numPages; ++i) {
-        pagePromises.push(getSinglePlaylistPage(spotifyApi, userId, playlistId, i * 100));
+        pagePromises.push(
+            getSinglePlaylistPage(spotifyApi, userId, playlistId, i * 100)
+        );
     }
     const resolvedPages = await Promise.all(pagePromises);
     return [].concat.apply([], resolvedPages.map(it => it.uris));
 }
 
-export async function getPagedPlaylistWithTrackInfo(spotifyApi, userId, playlistId) {
-    const firstPage = await getSinglePlaylistPageWithTrackInfo(spotifyApi, userId, playlistId, 0);
+export async function getPagedPlaylistWithTrackInfo(
+    spotifyApi,
+    userId,
+    playlistId
+) {
+    const firstPage = await getSinglePlaylistPageWithTrackInfo(
+        spotifyApi,
+        userId,
+        playlistId,
+        0
+    );
     const numPages = Math.ceil(firstPage.total / 100);
     const pagePromises = [Promise.resolve(firstPage)];
     for (let i = 1; i < numPages; ++i) {
-        pagePromises.push(getSinglePlaylistPageWithTrackInfo(spotifyApi, userId, playlistId, i * 100));
+        pagePromises.push(
+            getSinglePlaylistPageWithTrackInfo(
+                spotifyApi,
+                userId,
+                playlistId,
+                i * 100
+            )
+        );
     }
     const resolvedPages = await Promise.all(pagePromises);
     return [].concat.apply([], resolvedPages.map(it => it.tracks));
 }
 
-async function getSinglePlaylistPage(spotifyApi, userId, playlistId, offset = 0) {
+async function getSinglePlaylistPage(
+    spotifyApi,
+    userId,
+    playlistId,
+    offset = 0
+) {
     // console.log(`loading playlist ${userId}/${playlistId} at #${offset}`);
     const rawPage = await spotifyApi.getPlaylistTracks(userId, playlistId, {
-        fields: 'total,items(track(uri))',
+        fields: "total,items(track(uri))",
         offset,
-        limit,
+        limit
     });
     let nextOffset = offset + limit;
     let total = rawPage.body.total;
     const moreNeeded = nextOffset < total;
     const uris = rawPage.body.items
         .map(it => it.track.uri)
-        .filter(uri => uri !== 'spotify:track:null');
+        .filter(uri => uri !== "spotify:track:null");
     return { total, uris };
 }
 
-async function getSinglePlaylistPageWithTrackInfo(spotifyApi, userId, playlistId, offset = 0) {
+async function getSinglePlaylistPageWithTrackInfo(
+    spotifyApi,
+    userId,
+    playlistId,
+    offset = 0
+) {
     // console.log(`loading playlist ${userId}/${playlistId} at #${offset}`);
     const rawPage = await spotifyApi.getPlaylistTracks(userId, playlistId, {
-        fields: 'total,items(track(uri,duration_ms,name,artists))',
+        fields: "total,items(track(uri,duration_ms,name,artists))",
         offset,
-        limit,
+        limit
     });
     let nextOffset = offset + limit;
     let total = rawPage.body.total;
     const moreNeeded = nextOffset < total;
     const tracks = rawPage.body.items
         .map(it => it.track)
-        .filter(it => it.uri !== 'spotify:track:null');
+        .filter(it => it.uri !== "spotify:track:null");
     return { total, tracks };
 }
 
@@ -229,7 +271,8 @@ function randomIntBetweenInclusive(first, last) {
 function getRandomItems(arr, n) {
     if (arr.length <= n) return arr.slice();
     var result = new Array(n), len = arr.length, taken = new Array(len);
-    if (n > len) throw new RangeError('getRandom: more elements taken than available');
+    if (n > len)
+        throw new RangeError("getRandom: more elements taken than available");
     while (n--) {
         var x = Math.floor(Math.random() * len);
         result[n] = arr[x in taken ? taken[x] : x];
@@ -239,21 +282,23 @@ function getRandomItems(arr, n) {
 }
 
 export async function receiveSpotifyCreds(req) {
-    console.log('making spotify client');
+    console.log("making spotify client");
     const preAuthSpotifyApi = await rawSpotifyClient(req);
 
     console.log("Trading auth code for tokens");
-    const granted = await preAuthSpotifyApi.authorizationCodeGrant(req.query.code);
+    const granted = await preAuthSpotifyApi.authorizationCodeGrant(
+        req.query.code
+    );
 
     console.log("Tokens acquired");
 
-    saveAccessCode(granted.body['access_token']);
-    saveRefreshCode(granted.body['refresh_token']);
+    saveAccessCode(granted.body["access_token"]);
+    saveRefreshCode(granted.body["refresh_token"]);
 
-    console.log('creating authed client');
+    console.log("creating authed client");
     const authedSpotifyApi = await makeSpotifyClient(req);
 
-    console.log('Requesting saved tracks from authed client');
+    console.log("Requesting saved tracks from authed client");
 
     return await authedSpotifyApi.getMySavedTracks({ limit: 1 });
 }
@@ -268,15 +313,15 @@ export async function scanInboxes(req) {
     const spotifyApi = await makeSpotifyClient(req);
 
     const inboxPlaylistSpecs = [
-        ['henDiscover', 'spotify', '37i9dQZEVXcORpwpJL9ceh'],
-        ['henReleaseRadar', 'spotify', '37i9dQZEVXbnh6TOylu0xX'],
-        ['djoDiscover', 'spotify', '37i9dQZEVXcNPxeqxshEf9'],
+        ["henDiscover", "spotify", "37i9dQZEVXcORpwpJL9ceh"],
+        ["henReleaseRadar", "spotify", "37i9dQZEVXbnh6TOylu0xX"],
+        ["djoDiscover", "spotify", "37i9dQZEVXcNPxeqxshEf9"],
         // ['desmondDiscover', 'spotify', '37i9dQZEVXcISf3FIRhvUD'],
-        ['pitchforkOfficialTracks', 'pitchfork', '7q503YgioHAbo1iOIa67M8'],
-        ['pitchforkUnofficialAlbums', 'kenove', '6QdRN6dPnook9KPezrggaO'],
+        ["pitchforkOfficialTracks", "pitchfork", "7q503YgioHAbo1iOIa67M8"],
+        ["pitchforkUnofficialAlbums", "kenove", "6QdRN6dPnook9KPezrggaO"],
         // ['jjjHitList', 'triple.j.abc', '7vFQNWXoblEJXpbnTuyz76'],
-        ['needleDropTracks', 'szymonczarnowski', '1h9vpwvGP5Pr2qvAzNCjOK'],
-        ['rtrSoundAlternative', 'rtrfm92.1', '0uHa4xTycG89LOehnKIgyS'],
+        ["needleDropTracks", "szymonczarnowski", "1h9vpwvGP5Pr2qvAzNCjOK"],
+        ["rtrSoundAlternative", "rtrfm92.1", "0uHa4xTycG89LOehnKIgyS"]
         // ['livvyDiscover', 'spotify', '37i9dQZEVXcJP0NgDg2X0T'],
         // ['pitchforkUnofficialTracks', 'szymonczarnowski', '2LkZTDKWPelJv7HNY9rQV7'],
         // ['izaakDiscover', 'spotify', '37i9dQZEVXcDc5DQak61yg'],
@@ -285,8 +330,8 @@ export async function scanInboxes(req) {
     ];
 
     const favePlaylistSpecs = [
-        ['pyroFaves', HEN_SPOTIFY, '3ALEQUBsfYKggO5ZULf8xN'],
-        ['henShazamTracks', HEN_SPOTIFY, '1JBCsNUmAdZw4xIkZOW90r'],
+        ["pyroFaves", HEN_SPOTIFY, "3ALEQUBsfYKggO5ZULf8xN"],
+        ["henShazamTracks", HEN_SPOTIFY, "1JBCsNUmAdZw4xIkZOW90r"]
     ];
 
     // We use a set here to deduplicate overlaps between the source playlists
@@ -296,7 +341,11 @@ export async function scanInboxes(req) {
     await Promise.all([
         (async () => {
             console.log("loading inbox...");
-            const tracks = await getPagedPlaylist(spotifyApi, HEN_SPOTIFY, INBOX_PLAYLIST);
+            const tracks = await getPagedPlaylist(
+                spotifyApi,
+                HEN_SPOTIFY,
+                INBOX_PLAYLIST
+            );
             tracks.forEach(it => allInboxTrackSet.add(it));
             myInboxTracks.push(...tracks);
             console.log("...inbox loaded");
@@ -305,26 +354,33 @@ export async function scanInboxes(req) {
         Promise.all(
             inboxPlaylistSpecs.map(async spec => {
                 const [nickname, user, id] = spec;
-                console.log('Loading playlist ' +  nickname);
+                console.log("Loading playlist " + nickname);
                 const tracks = await asyncTry(
                     () => getPagedPlaylist(spotifyApi, user, id),
                     error => {
-                        console.error('Got error loading playlist ' + nickname);
+                        console.error("Got error loading playlist " + nickname);
                         throw error;
                     }
                 );
                 tracks.forEach(it => allInboxTrackSet.add(it));
-                console.log('Done loading ' +  nickname);
+                console.log("Done loading " + nickname);
             })
-        ),
+        )
     ]);
 
-    console.log('Loaded all new-track sources');
+    console.log("Loaded all new-track sources");
 
-    const historyURIsFromDB = (await getSpotifyTable().select('uri')).map(it => it.uri);
+    const historyURIsFromDB = (await getSpotifyTable().select("uri")).map(
+        it => it.uri
+    );
 
-    const historySet = new Set([...historyURIsFromDB, ...hardCodedHistoryURIs.map(it => it.uri)]);
-    const newTracks = Array.from(allInboxTrackSet).filter(it => !historySet.has(it));
+    const historySet = new Set([
+        ...historyURIsFromDB,
+        ...hardCodedHistoryURIs.map(it => it.uri)
+    ]);
+    const newTracks = Array.from(allInboxTrackSet).filter(
+        it => !historySet.has(it)
+    );
 
     // There is a race condition here, but it will fail atomically. if one of these tracks
     // gets added to history before we write it, this write will fail, but we can just run the whole
@@ -332,37 +388,55 @@ export async function scanInboxes(req) {
     if (newTracks.length) {
         await addTracks(newTracks, { dispensed: false });
     }
-    console.log('About to delete imported tracks from the inbox');
+    console.log("About to delete imported tracks from the inbox");
     // delete tracks from inbox.
     await inParallelBatches(70, myInboxTracks, async subset => {
         const tracks = subset.map(uri => ({ uri }));
-        await spotifyApi.removeTracksFromPlaylist(HEN_SPOTIFY, INBOX_PLAYLIST, tracks);
+        await spotifyApi.removeTracksFromPlaylist(
+            HEN_SPOTIFY,
+            INBOX_PLAYLIST,
+            tracks
+        );
     });
 
-    console.log('Done deleting imported tracks from the inbox');
+    console.log("Done deleting imported tracks from the inbox");
 
-    console.log('About to process all fave-sources');
+    console.log("About to process all fave-sources");
     let totalFavesFound = 0;
     await Promise.all(
         favePlaylistSpecs.map(async spec => {
             const [playlistName, userName, playlistId] = spec;
             console.log(`Processing fave-source ${playlistName}`);
-            const tracks = await getPagedPlaylist(spotifyApi, userName, playlistId);
+            const tracks = await getPagedPlaylist(
+                spotifyApi,
+                userName,
+                playlistId
+            );
             console.log(
                 `Fully loaded playlist ${playlistName}. There weree ${tracks.length} tracks.`
             );
             if (tracks.length) {
-                console.log(`About to add to saved tracks from playlist ${playlistName}`);
+                console.log(
+                    `About to add to saved tracks from playlist ${playlistName}`
+                );
 
                 await inParallelBatches(50, tracks, async subset => {
-                    const subsetTrackIds = subset.map(it => it.split(':').reverse()[0]);
+                    const subsetTrackIds = subset.map(
+                        it => it.split(":").reverse()[0]
+                    );
                     // console.log('subsetTrackIds', subsetTrackIds);
-                    console.log(`Saving ${subset.length} tracks from ${playlistName}`);
+                    console.log(
+                        `Saving ${subset.length} tracks from ${playlistName}`
+                    );
                     await spotifyApi.addToMySavedTracks(subsetTrackIds);
-                    console.log(`Done saving ${subset.length} tracks from ${playlistName}`);
+                    console.log(
+                        `Done saving ${subset.length} tracks from ${playlistName}`
+                    );
                 });
 
-                console.log(`Done adding saved tracks from playlist ${playlistName}`);
+                console.log(
+                    `Done adding saved tracks from playlist ${playlistName}`
+                );
 
                 console.log(`About to clear  ${playlistName}`);
 
@@ -382,11 +456,23 @@ export async function scanInboxes(req) {
         })
     );
 
-    console.log('Done processing all fave-sources;');
+    console.log("Done processing all fave-sources;");
 
     // TODO: save the faves as already-dispensed tracks in the history
     // TODO: and, if they are already in history, update them to be marked as dispensed
     // TODO: clear the faves playlists here
 
-    return { numNewInboxTracks: newTracks.length, possibleNewFaves: totalFavesFound };
+    console.log("here come the dyump:");
+    const allTracks = await getSpotifyTable();
+
+    const dumpFileName = process.cwd() + "/dump-" + Date.now() + ".json";
+
+    fs.writeFileSync(dumpFileName, JSON.stringify(allTracks));
+
+    return {
+        numNewInboxTracks: newTracks.length,
+        possibleNewFaves: totalFavesFound
+    };
 }
+
+import fs from "fs";
