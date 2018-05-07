@@ -1,8 +1,13 @@
 import SpotifyWebApi from "spotify-web-api-node";
+<<<<<<< HEAD
 // import * as MemCache from "./memcached";
 import Knex from "knex";
 
 const MemCache = new Map();
+=======
+import * as MemCache from "./memcached";
+import Knex from "knex";
+>>>>>>> c763c2eb26a2d26bb8f11a8b1c6744925db3da7c
 
 function getTrackInfo() {
     const client = new SpotifyWebApi();
@@ -18,7 +23,11 @@ const HEN_SPOTIFY = "1232511708";
 //noinspection JSUnresolvedVariable
 const dbClient = Knex({
     client: "pg",
+<<<<<<< HEAD
     connection: process.env.DATABASE_URL + "?ssl=true",
+=======
+    connection: process.env.DATABASE_URL + "?ssl=true"
+>>>>>>> c763c2eb26a2d26bb8f11a8b1c6744925db3da7c
 });
 
 const SPOTIFY_TABLE = "SpotifyTracks";
@@ -120,7 +129,7 @@ export async function cutPipe(req) {
         numRemaining,
         id: newPlaylistId,
         uri: playlistInfo.body.uri,
-        tracks: playlistRows,
+        tracks: playlistRows
     };
 }
 
@@ -146,12 +155,13 @@ let rawSpotifyClient = function(req) {
     return new SpotifyWebApi({
         clientId: SPOTIFY_CLIENT_ID,
         clientSecret: SPOTIFY_CLIENT_SECRET,
-        redirectUri: makeSpotifyRedirectUri(req),
+        redirectUri: makeSpotifyRedirectUri(req)
     });
 };
 
 export async function makeSpotifyClient(req) {
     console.log("Instantiating SpotifyWebApi");
+<<<<<<< HEAD
     const setup = {
         clientId: SPOTIFY_CLIENT_ID,
         clientSecret: SPOTIFY_CLIENT_SECRET,
@@ -162,6 +172,15 @@ export async function makeSpotifyClient(req) {
     console.log("setup =", setup);
     const spotifyApi = new SpotifyWebApi(setup);
     console.log("instantiated library");
+=======
+    const spotifyApi = rawSpotifyClient(req);
+    console.log("Loading refresh token from memcache");
+    let refreshToken = await MemCache.get("spotify-refresh-code");
+    console.log("Setting refresh token " + refreshToken);
+
+    spotifyApi.setRefreshToken(refreshToken);
+    console.log("Refreshing access token");
+>>>>>>> c763c2eb26a2d26bb8f11a8b1c6744925db3da7c
     const refreshAccessTokenResult = await spotifyApi.refreshAccessToken();
     console.log("done calling refreshAccessToken");
     spotifyApi.setAccessToken(refreshAccessTokenResult.body.access_token);
@@ -226,7 +245,7 @@ async function getSinglePlaylistPage(
     const rawPage = await spotifyApi.getPlaylistTracks(userId, playlistId, {
         fields: "total,items(track(uri))",
         offset,
-        limit,
+        limit
     });
     let nextOffset = offset + limit;
     let total = rawPage.body.total;
@@ -245,9 +264,13 @@ async function getSinglePlaylistPageWithTrackInfo(
 ) {
     // console.log(`loading playlist ${userId}/${playlistId} at #${offset}`);
     const rawPage = await spotifyApi.getPlaylistTracks(userId, playlistId, {
+<<<<<<< HEAD
         fields: "total,items(track(uri,duration_ms,name,artists,album))",
+=======
+        fields: "total,items(track(uri,duration_ms,name,artists))",
+>>>>>>> c763c2eb26a2d26bb8f11a8b1c6744925db3da7c
         offset,
-        limit,
+        limit
     });
     let nextOffset = offset + limit;
     let total = rawPage.body.total;
@@ -326,7 +349,11 @@ export async function scanInboxes(req) {
         ["pitchforkUnofficialAlbums", "kenove", "6QdRN6dPnook9KPezrggaO"],
         // ['jjjHitList', 'triple.j.abc', '7vFQNWXoblEJXpbnTuyz76'],
         ["needleDropTracks", "szymonczarnowski", "1h9vpwvGP5Pr2qvAzNCjOK"],
+<<<<<<< HEAD
         ["rtrSoundAlternative", "rtrfm92.1", "0uHa4xTycG89LOehnKIgyS"],
+=======
+        ["rtrSoundAlternative", "rtrfm92.1", "0uHa4xTycG89LOehnKIgyS"]
+>>>>>>> c763c2eb26a2d26bb8f11a8b1c6744925db3da7c
         // ['livvyDiscover', 'spotify', '37i9dQZEVXcJP0NgDg2X0T'],
         // ['pitchforkUnofficialTracks', 'szymonczarnowski', '2LkZTDKWPelJv7HNY9rQV7'],
         // ['izaakDiscover', 'spotify', '37i9dQZEVXcDc5DQak61yg'],
@@ -336,7 +363,11 @@ export async function scanInboxes(req) {
 
     const favePlaylistSpecs = [
         ["pyroFaves", HEN_SPOTIFY, "3ALEQUBsfYKggO5ZULf8xN"],
+<<<<<<< HEAD
         ["henShazamTracks", HEN_SPOTIFY, "1JBCsNUmAdZw4xIkZOW90r"],
+=======
+        ["henShazamTracks", HEN_SPOTIFY, "1JBCsNUmAdZw4xIkZOW90r"]
+>>>>>>> c763c2eb26a2d26bb8f11a8b1c6744925db3da7c
     ];
 
     // We use a set here to deduplicate overlaps between the source playlists
@@ -370,7 +401,7 @@ export async function scanInboxes(req) {
                 tracks.forEach(it => allInboxTrackSet.add(it));
                 console.log("Done loading " + nickname);
             })
-        ),
+        )
     ]);
 
     console.log("Loaded all new-track sources");
@@ -381,7 +412,11 @@ export async function scanInboxes(req) {
 
     const historySet = new Set([
         ...historyURIsFromDB,
+<<<<<<< HEAD
         ...hardCodedHistoryURIs.map(it => it.uri),
+=======
+        ...hardCodedHistoryURIs.map(it => it.uri)
+>>>>>>> c763c2eb26a2d26bb8f11a8b1c6744925db3da7c
     ]);
     const newTracks = Array.from(allInboxTrackSet).filter(
         it => !historySet.has(it)
@@ -467,8 +502,23 @@ export async function scanInboxes(req) {
     // TODO: and, if they are already in history, update them to be marked as dispensed
     // TODO: clear the faves playlists here
 
+<<<<<<< HEAD
     return {
         numNewInboxTracks: newTracks.length,
         possibleNewFaves: totalFavesFound,
+=======
+    console.log("here come the dyump:");
+    const allTracks = await getSpotifyTable();
+
+    const dumpFileName = process.cwd() + "/dump-" + Date.now() + ".json";
+
+    fs.writeFileSync(dumpFileName, JSON.stringify(allTracks));
+
+    return {
+        numNewInboxTracks: newTracks.length,
+        possibleNewFaves: totalFavesFound
+>>>>>>> c763c2eb26a2d26bb8f11a8b1c6744925db3da7c
     };
 }
+
+import fs from "fs";

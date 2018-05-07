@@ -1,4 +1,5 @@
 {
+<<<<<<< HEAD
     "name": "body-hub",
     "version": "0.0.1",
     "description": "",
@@ -42,4 +43,43 @@
         "spotify-node-applescript": "^1.1.0",
         "spotify-web-api-node": "^2.3.6"
     }
+=======
+  "name": "body-hub",
+  "version": "0.0.1",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node index.js",
+    "heroku-local": "yarn heroku config -s > .env && yarn heroku local",
+    "logs": "heroku logs --tail",
+    "prettier": "prettier --print-width 100 --tab-width 4 --single-quote --jsx-bracket-same-line --trailing-comma es5 --write"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@firebase/firestore": "^0.1.4",
+    "babel": "^6.5.2",
+    "babel-polyfill": "^6.13.0",
+    "babel-preset-es2015": "^6.13.2",
+    "babel-preset-react": "^6.11.1",
+    "babel-preset-stage-0": "^6.5.0",
+    "babel-register": "^6.11.6",
+    "body-parser": "^1.15.2",
+    "express": "^4.14.0",
+    "firebase-tools": "^3.15.4",
+    "heroku": "^0.2.0",
+    "heroku-cli": "^6.15.13",
+    "knex": "^0.12.7",
+    "memjs": "^0.10.0",
+    "mjs": "^1.0.0",
+    "node-osascript": "^2.0.0",
+    "pg": "^6.1.4",
+    "prettier": "^0.22.0",
+    "request": "^2.74.0",
+    "request-promise": "^4.1.1",
+    "spotify-node-applescript": "^1.1.0",
+    "spotify-web-api-node": "^2.3.6"
+  }
+>>>>>>> c763c2eb26a2d26bb8f11a8b1c6744925db3da7c
 }
