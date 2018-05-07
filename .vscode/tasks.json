@@ -7,6 +7,11 @@
             "type": "npm",
             "script": "heroku-local",
             "problemMatcher": []
+        },
+        {
+            "type": "npm",
+            "script": "start",
+            "problemMatcher": []
         }
     ]
 }
